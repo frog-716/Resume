@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>macOS 本地轻量简历 - 3套交互方向高保真预览</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 混合字体渲染：英文与数字优先匹配 Times New Roman，中文字符平滑回退至苹方 */
+    .font-resume {
+      font-family: "Times New Roman", "PingFang SC", -apple-system, BlinkMacSystemFont, "Hiragino Sans GB", "Microsoft YaHei", serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .font-ui {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+
+    /* A4 比例物理画幅，严禁被内容撑破为窄版重排 */
+    .a4-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      max-height: 297mm;
+      box-sizing: border-box;
+      background: #FFFFFF;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      transform-origin: top center;
+    }
+
+    /* macOS 窗口控件毛玻璃 */
+    .mac-blur {
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+    }
+
+    /* 自定义滚动条，符合 macOS 极细微风格 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(140, 140, 140, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    /* 可编辑字段聚焦态，保留纸面视觉，仅微光指示 */
+    [contenteditable="true"]:focus {
+      outline: none;
+      background-color: rgba(59, 130, 246, 0.05);
+      border-radius: 2px;
+    }
+
+    /* A4 栏目网格严格比例 */
+    .grid-edu {
+      display: grid;
+      grid-template-columns: 1fr 3fr 1fr;
+      column-gap: 8px;
+    }
+    .grid-work {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      column-gap: 8px;
+    }
+  </style>
+</head>
+<body class="bg-[#ECEEF2] text-[#1E232A] font-ui select-none overflow-x-hidden antialiased h-screen flex flex-col">
+
+  <!-- 顶部原型控制与方向切换条 (仅供设计评审选择，非实际应用界面) -->
+  <header class="h-14 bg-[#1F2329] text-white px-4 flex items-center justify-between border-b border-black/40 z-50 shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-1.5 mr-2">
+        <span class="w-3 h-3 rounded-full bg-[#FF5F56] inline-block shadow-inner"></span>
+        <span class="w-3 h-3 rounded-full bg-[#FFBD2E] inline-block shadow-inner"></span>
+        <span class="w-3 h-3 rounded-full bg-[#27C93F] inline-block shadow-inner"></span>
+      </div>
+      <span class="text-xs font-semibold tracking-wider text-slate-300 uppercase">macOS 架构评测</span>
+      <span class="text-xs text-slate-400">|</span>
+      <span class="text-xs text-slate-300">交互方向选择：</span>
+
+      <!-- 3套方向切换按钮 -->
+      <div class="inline-flex bg-black/40 p-1 rounded-lg border border-white/10 space-x-1" id="directionTabs">
+        <button onclick="setDirection(1)" id="dirBtn-1" class="px-3 py-1 rounded text-xs font-medium transition-all bg-blue-600 text-white shadow-sm">
+          方向一：原生检查器栏 (Classic Inspector)
+        </button>
+        <button onclick="setDirection(2)" id="dirBtn-2" class="px-3 py-1 rounded text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-white/5">
+          方向二：画布浮岛 HUD (Canvas HUD)
+        </button>
+        <button onclick="setDirection(3)" id="dirBtn-3" class="px-3 py-1 rounded text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-white/5">
+          方向三：双栏历史脉络 (Split View & Lineage)
+        </button>
+      </div>
+    </div>
+
+    <!-- 快捷调控与状态模拟 -->
+    <div class="flex items-center space-x-3 text-xs">
+      <div class="flex items-center space-x-2 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
+        <span class="text-slate-400">模拟保存状态:</span>
+        <button onclick="toggleMockSaveFailure()" id="mockSaveBtn" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[11px] font-mono hover:bg-emerald-500/30">
+          正常写入中
+        </button>
+      </div>
+      <div class="flex items-center space-x-2 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
+        <span class="text-slate-400">纸面缩放:</span>
+        <input type="range" min="60" max="110" value="85" id="zoomSlider" oninput="setZoom(this.value)" class="w-16 accent-blue-500 cursor-pointer">
+        <span id="zoomLabel" class="text-slate-300 font-mono w-8 text-right">85%</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 当前方向设计差异一句话阐述栏 -->
+  <div class="bg-[#E2E4E9] border-b border-[#D0D3D9] px-4 py-1.5 text-xs text-[#4A5568] flex items-center justify-between shrink-0">
+    <div class="flex items-center space-x-2">
+      <span class="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded font-semibold text-[10px]">方向特性</span>
+      <span id="directionPitchText" class="font-medium text-[#2D3748]">方向一：经典 macOS 顶部 Spotlight 搜索栏 + 右侧独立排版检查器，适合严谨桌面多步微调。</span>
+    </div>
+    <div class="text-[11px] text-[#718096] flex items-center space-x-3">
+      <span>支持真实快捷键：<kbd class="bg-white px-1.5 py-0.5 rounded border border-gray-300 text-gray-700 shadow-2xs">⌘S</kbd> 命名定版</span>
+      <span>·</span>
+      <span>输入文字即自动存入草稿</span>
+    </div>
+  </div>
+
+  <!-- 主界面工作区容器 -->
+  <main class="flex-1 flex overflow-hidden relative" id="mainWorkspace">
+
+    <!-- ========================================================================= -->
+    <!-- 方向一：系统原生检查器 (Classic Mac Inspector) -->
+    <!-- ========================================================================= -->
+    <div id="direction-1-view" class="w-full h-full flex flex-col flex-1">
+      <!-- 方向一专属窗口顶栏 -->
+      <div class="h-11 bg-[#F6F7F9] border-b border-[#DCDFE5] px-4 flex items-center justify-between shrink-0 mac-blur">
+        <div class="flex items-center space-x-3">
+          <!-- 简历标题与轻量重命名 -->
+          <div class="flex items-center space-x-2">
+            <span class="font-semibold text-sm text-gray-800" id="dir1ResumeTitle">林舟 · 通用简历</span>
+            <button onclick="promptRenameResume()" title="重命名简历" class="text-gray-400 hover:text-gray-700">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </button>
+          </div>
+
+          <!-- 自动保存状态指示器 -->
+          <div id="dir1SaveStatus" class="flex items-center space-x-1.5 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>已自动保存至最新稿</span>
+          </div>
+        </div>
+
+        <!-- 居中 Spotlight 搜索框入口 -->
+        <div class="relative w-80">
+          <div onclick="toggleSearchDropdown(true, 'dir1')" class="h-7 w-full bg-white rounded-md border border-gray-300 hover:border-gray-400 shadow-2xs flex items-center px-2.5 cursor-pointer transition-colors">
+            <svg class="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span class="text-xs text-gray-400 flex-1 truncate">搜索简历或历史定版...</span>
+            <kbd class="text-[10px] text-gray-400 bg-gray-100 px-1 rounded border border-gray-200">⌘K</kbd>
+          </div>
+        </div>
+
+        <!-- 右侧动作区 -->
+        <div class="flex items-center space-x-2">
+          <button onclick="openSnapshotModal()" class="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center space-x-1.5 shadow-2xs">
+            <span>命名定版</span>
+            <kbd class="text-[10px] text-gray-400">⌘S</kbd>
+          </button>
+          <button onclick="exportPdf()" class="px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 flex items-center space-x-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>导出 PDF</span>
+          </button>
+          <div class="h-4 w-px bg-gray-300 mx-1"></div>
+          <!-- 低频备份与恢复 -->
+          <button onclick="openBackupSheet()" title="备份与恢复" class="p-1 text-gray-500 hover:text-gray-800 rounded hover:bg-gray-200/50">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 方向一主体：中间A4纸 + 右侧独立排版面板 -->
+      <div class="flex-1 flex overflow-hidden">
+        <!-- 居中A4纸容器 -->
+        <div class="flex-1 overflow-auto p-8 flex justify-center items-start bg-[#ECEEF2] relative" id="paperContainer-1">
+          <!-- A4 纸张挂载点 -->
+        </div>
+
+        <!-- 右侧可折叠排版检查器 -->
+        <aside class="w-72 bg-[#F9FAFB] border-l border-[#DCDFE5] flex flex-col shrink-0 shadow-sm z-10">
+          <div class="p-3 border-b border-gray-200 flex items-center justify-between">
+            <div class="flex items-center space-x-1.5">
+              <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+              <span class="text-xs font-semibold text-gray-800">版面微调 (0.5mm 级)</span>
+            </div>
+            <button onclick="toggleAutoFill()" id="autoFillBtn-1" class="text-[11px] text-blue-600 font-medium hover:underline">
+              自动微调铺满
+            </button>
+          </div>
+
+          <div class="p-4 space-y-5 overflow-y-auto flex-1 text-xs text-gray-600">
+            <!-- 留白调节组 -->
+            <div class="space-y-3">
+              <span class="text-[11px] font-bold text-gray-400 tracking-wider uppercase">页面留白 (毫米)</span>
+              
+              <!-- 上留白 -->
+              <div class="flex items-center justify-between">
+                <span class="text-gray-700">上留白</span>
+                <div class="flex items-center space-x-1.5">
+                  <button onclick="adjustMargin('top', -0.5)" class="w-5 h-5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-100 flex items-center justify-center font-mono">-</button>
+                  <span id="labelMarginTop-1" class="font-mono text-gray-900 w-12 text-center">18.0 mm</span>
+                  <button onclick="adjustMargin('top', 0.5)" class="w-5 h-5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-100 flex items-center justify-center font-mono">+</button>
+                </div>
+              </div>
+
+              <!-- 下留白 -->
+              <div class="flex items-center justify-between">
+                <span class="text-gray-700">下留白</span>
+                <div class="flex items-center space-x-1.5">
+                  <button onclick="adjustMargin('bottom', -0.5)" class="w-5 h-5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-100 flex items-center justify-center font-mono">-</button>
+                  <span id="labelMarginBottom-1" class="font-mono text-gray-900 w-12 text-center">18.0 mm</span>
+                  <button onclick="adjustMargin('bottom', 0.5)" class="w-5 h-5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-100 flex items-center justify-center font-mono">+</button>
+                </div>
+              </div>
+
+              <!-- 左右留白 (共用一组) -->
+              <div class="flex items-center justify-between">
+                <span class="text-gray-700">左右共用留白</span>
+                <div class="flex items-center space-x-1.5">
+                  <button onclick="adjustMargin('lr', -0.5)" class="w-5 h-5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-100 flex items-center justify-center font-mono">-</button>
+                  <span id="labelMarginLR-1" class="font-mono text-gray-900 w-12 text-center">18.0 mm</span>
+                  <button onclick="adjustMargin('lr', 0.5)" class="w-5 h-5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-100 flex items-center justify-center font-mono">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 字号与行距范围 -->
+            <div class="space-y-3 pt-3 border-t border-gray-200">
+              <span class="text-[11px] font-bold text-gray-400 tracking-wider uppercase">排版节奏</span>
+              
+              <!-- 正文字号 -->
+              <div>
+                <div class="flex justify-between text-gray-700 mb-1">
+                  <span>正文字号</span>
+                  <span id="labelBodySize-1" class="font-mono text-gray-900">9.5 pt</span>
+                </div>
+                <input type="range" min="8.5" max="10.5" step="0.1" value="9.5" oninput="updateBodySize(this.value)" class="w-full accent-blue-600 cursor-pointer">
+                <div class="flex justify-between text-[10px] text-gray-400">
+                  <span>紧凑 8.5pt</span>
+                  <span>宽松 10.5pt</span>
+                </div>
+              </div>
+
+              <!-- 行间距 -->
+              <div>
+                <div class="flex justify-between text-gray-700 mb-1">
+                  <span>正文行距倍数</span>
+                  <span id="labelLineHeight-1" class="font-mono text-gray-900">1.45</span>
+                </div>
+                <input type="range" min="1.2" max="1.7" step="0.05" value="1.45" oninput="updateLineHeight(this.value)" class="w-full accent-blue-600 cursor-pointer">
+              </div>
+
+              <!-- 段落与模块间距 -->
+              <div>
+                <div class="flex justify-between text-gray-700 mb-1">
+                  <span>模块间距</span>
+                  <span id="labelSectionGap-1" class="font-mono text-gray-900">12 pt</span>
+                </div>
+                <input type="range" min="8" max="20" step="1" value="12" oninput="updateSectionGap(this.value)" class="w-full accent-blue-600 cursor-pointer">
+              </div>
+            </div>
+
+            <!-- 规则规范信息清单 -->
+            <div class="p-2.5 bg-gray-100 rounded text-[11px] text-gray-500 space-y-1">
+              <div class="font-medium text-gray-700">规范指标固化：</div>
+              <div>· 姓名 18pt / 联系 8.5pt (严控两行)</div>
+              <div>· 分区 12pt / 条目与日期 正文+0.5pt</div>
+              <div>· 中文苹方 / 西文 Times New Roman</div>
+              <div>· 工作/项目三等栏 / 教育 1:3:1</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 方向二：画布浮岛 HUD (Canvas HUD & Dynamic Island) -->
+    <!-- ========================================================================= -->
+    <div id="direction-2-view" class="w-full h-full flex flex-col flex-1 relative hidden">
+      <!-- 极简无边框工作区：顶部居中悬浮式毛玻璃岛 -->
+      <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-2 bg-white/85 mac-blur px-3 py-1.5 rounded-full border border-black/10 shadow-lg">
+        <!-- 简历与草稿状态 -->
+        <div class="flex items-center space-x-2 pl-1 pr-2">
+          <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+          <span class="font-semibold text-xs text-gray-800" id="dir2ResumeTitle">林舟 · 通用简历</span>
+        </div>
+
+        <div class="h-3.5 w-px bg-gray-300"></div>
+
+        <!-- 悬浮胶囊搜索入口 -->
+        <button onclick="toggleSearchDropdown(true, 'dir2')" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200/80 text-xs text-gray-600 transition-colors">
+          <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <span class="text-[11px]">搜索简历/定版</span>
+        </button>
+
+        <!-- 自动保存状态 -->
+        <span id="dir2SaveStatus" class="text-[11px] text-emerald-600 px-1 font-mono">已自动保存</span>
+
+        <div class="h-3.5 w-px bg-gray-300"></div>
+
+        <!-- 定版动作 -->
+        <button onclick="openSnapshotModal()" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-700 hover:bg-gray-100">
+          定版 (⌘S)
+        </button>
+        <button onclick="exportPdf()" class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 shadow-2xs">
+          导出 PDF
+        </button>
+      </div>
+
+      <!-- 中间纯净 A4 画布 -->
+      <div class="flex-1 overflow-auto p-12 pt-20 pb-24 flex justify-center items-start bg-[#ECEEF2]" id="paperContainer-2">
+        <!-- A4 纸张挂载点 -->
+      </div>
+
+      <!-- 底部悬浮排版 HUD (展开/收起) -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-white/90 mac-blur px-4 py-2 rounded-2xl border border-black/10 shadow-xl flex items-center space-x-4 text-xs text-gray-700">
+        <div class="flex items-center space-x-1 text-gray-500 font-medium">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+          <span class="text-[11px]">快速留白:</span>
+        </div>
+
+        <!-- 上下留白快捷调控 -->
+        <div class="flex items-center space-x-1">
+          <span class="text-gray-500 text-[11px]">上</span>
+          <button onclick="adjustMargin('top', -0.5)" class="w-4 h-4 bg-gray-100 rounded hover:bg-gray-200 text-center text-[10px]">-</button>
+          <span id="labelMarginTop-2" class="font-mono w-10 text-center text-[11px]">18.0</span>
+          <button onclick="adjustMargin('top', 0.5)" class="w-4 h-4 bg-gray-100 rounded hover:bg-gray-200 text-center text-[10px]">+</button>
+        </div>
+
+        <div class="flex items-center space-x-1">
+          <span class="text-gray-500 text-[11px]">下</span>
+          <button onclick="adjustMargin('bottom', -0.5)" class="w-4 h-4 bg-gray-100 rounded hover:bg-gray-200 text-center text-[10px]">-</button>
+          <span id="labelMarginBottom-2" class="font-mono w-10 text-center text-[11px]">18.0</span>
+          <button onclick="adjustMargin('bottom', 0.5)" class="w-4 h-4 bg-gray-100 rounded hover:bg-gray-200 text-center text-[10px]">+</button>
+        </div>
+
+        <div class="flex items-center space-x-1">
+          <span class="text-gray-500 text-[11px]">左右</span>
+          <button onclick="adjustMargin('lr', -0.5)" class="w-4 h-4 bg-gray-100 rounded hover:bg-gray-200 text-center text-[10px]">-</button>
+          <span id="labelMarginLR-2" class="font-mono w-10 text-center text-[11px]">18.0</span>
+          <button onclick="adjustMargin('lr', 0.5)" class="w-4 h-4 bg-gray-100 rounded hover:bg-gray-200 text-center text-[10px]">+</button>
+        </div>
+
+        <div class="h-3 w-px bg-gray-300"></div>
+
+        <!-- 正文字号 -->
+        <div class="flex items-center space-x-1.5">
+          <span class="text-gray-500 text-[11px]">字号</span>
+          <span id="labelBodySize-2" class="font-mono text-[11px]">9.5pt</span>
+          <input type="range" min="8.5" max="10.5" step="0.1" value="9.5" oninput="updateBodySize(this.value)" class="w-16 accent-blue-600">
+        </div>
+
+        <button onclick="toggleAutoFill()" id="autoFillBtn-2" class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-medium border border-blue-200">
+          铺满一页
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 方向三：双栏历史脉络工作台 (Split View & Lineage Drawer) -->
+    <!-- ========================================================================= -->
+    <div id="direction-3-view" class="w-full h-full flex flex-1 overflow-hidden hidden">
+      <!-- 左侧边栏：多简历管理与定版脉络树 -->
+      <aside class="w-64 bg-[#F2F3F5] border-r border-[#D9DCE2] flex flex-col shrink-0">
+        <!-- 侧栏搜索入口 -->
+        <div class="p-2.5 border-b border-gray-200/80">
+          <div onclick="toggleSearchDropdown(true, 'dir3')" class="w-full h-7 bg-white rounded border border-gray-300 flex items-center px-2 text-xs text-gray-500 cursor-pointer shadow-2xs hover:border-gray-400">
+            <svg class="w-3.5 h-3.5 text-gray-400 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span class="truncate">搜索历史定版...</span>
+          </div>
+        </div>
+
+        <!-- 简历列表及当前稿定版树 -->
+        <div class="flex-1 overflow-y-auto p-2 space-y-4">
+          <div>
+            <div class="flex items-center justify-between px-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              <span>独立简历档案</span>
+              <button onclick="createNewResume()" title="新建简历" class="text-blue-600 hover:text-blue-800 font-bold">+</button>
+            </div>
+            
+            <!-- 简历集合列表 -->
+            <div class="space-y-1" id="sidebarResumeTree">
+              <!-- JS 动态渲染树 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 侧栏底部轻量新建/复制入口 -->
+        <div class="p-2 border-t border-gray-200 bg-[#E8EAEE] flex items-center justify-between text-xs">
+          <button onclick="createNewResume()" class="text-gray-700 hover:text-blue-600 flex items-center space-x-1 font-medium">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>新建简历</span>
+          </button>
+          <button onclick="duplicateCurrentResume()" class="text-gray-600 hover:text-blue-600 flex items-center space-x-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span>复制当前</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- 右侧工作区 -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- 顶部排版与操作集成条 -->
+        <div class="h-10 bg-[#FAFAFA] border-b border-[#DCDFE5] px-4 flex items-center justify-between shrink-0 text-xs">
+          <div class="flex items-center space-x-4">
+            <span class="font-semibold text-gray-800" id="dir3ResumeTitle">林舟 · 通用简历</span>
+            <span id="dir3SaveStatus" class="text-emerald-600 text-[11px] font-mono">已自动保存最新稿</span>
+          </div>
+
+          <!-- 紧凑微调栏 -->
+          <div class="flex items-center space-x-3 text-gray-600">
+            <span class="text-gray-400">|</span>
+            <div class="flex items-center space-x-1">
+              <span>上:</span>
+              <button onclick="adjustMargin('top', -0.5)" class="px-1 bg-white border rounded text-[10px]">-</button>
+              <span id="labelMarginTop-3" class="font-mono">18.0</span>
+              <button onclick="adjustMargin('top', 0.5)" class="px-1 bg-white border rounded text-[10px]">+</button>
+            </div>
+            <div class="flex items-center space-x-1">
+              <span>下:</span>
+              <button onclick="adjustMargin('bottom', -0.5)" class="px-1 bg-white border rounded text-[10px]">-</button>
+              <span id="labelMarginBottom-3" class="font-mono">18.0</span>
+              <button onclick="adjustMargin('bottom', 0.5)" class="px-1 bg-white border rounded text-[10px]">+</button>
+            </div>
+            <div class="flex items-center space-x-1">
+              <span>左右:</span>
+              <button onclick="adjustMargin('lr', -0.5)" class="px-1 bg-white border rounded text-[10px]">-</button>
+              <span id="labelMarginLR-3" class="font-mono">18.0</span>
+              <button onclick="adjustMargin('lr', 0.5)" class="px-1 bg-white border rounded text-[10px]">+</button>
+            </div>
+            <span class="text-gray-400">|</span>
+            <button onclick="openSnapshotModal()" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-700">
+              命名定版 (⌘S)
+            </button>
+            <button onclick="exportPdf()" class="px-2.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700">
+              导出 PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- 画布居中区 -->
+        <div class="flex-1 overflow-auto p-8 flex justify-center items-start bg-[#ECEEF2]" id="paperContainer-3">
+          <!-- A4 纸张挂载点 -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 唯一的物理 A4 纸张 DOM (在方向切换时自动转移挂载) -->
+  <div id="sharedA4Paper" class="a4-sheet font-resume text-gray-900 transition-all duration-75">
+    <!-- 纸面顶层：姓名与联系 (姓名18pt, 联系严格两行8.5pt) -->
+    <div class="text-center mb-3">
+      <h1 contenteditable="true" oninput="handleContentInput()" class="text-[18pt] font-bold tracking-tight text-black py-0.5">林舟</h1>
+      
+      <!-- 联系方式第1行 -->
+      <div contenteditable="true" oninput="handleContentInput()" class="text-[8.5pt] text-gray-700 leading-tight mt-1">
+        电话: (+86) 138-0013-8000 · 邮箱: linzhou.career@sample.com · 现居: 上海市徐汇区
+      </div>
+      <!-- 联系方式第2行 (严控两行) -->
+      <div contenteditable="true" oninput="handleContentInput()" class="text-[8.5pt] text-gray-700 leading-tight">
+        个人主页: linzhou.dev · GitHub: github.com/linzhou · 意向: 高级产品设计 / 架构研发
+      </div>
+    </div>
+
+    <!-- 教育经历 (1:3:1 严格比例) -->
+    <section class="section-block" style="margin-bottom: 12pt;">
+      <div class="border-b border-black pb-0.5 mb-1.5 flex items-baseline justify-between">
+        <h2 class="text-[12pt] font-bold tracking-wider text-black">教育背景</h2>
+      </div>
+      <div class="grid-edu text-subhead font-semibold leading-normal">
+        <div contenteditable="true" oninput="handleContentInput()">2016.09 - 2020.06</div>
+        <div contenteditable="true" oninput="handleContentInput()">同济大学 · 软件工程学士 (主修交互与系统架构)</div>
+        <div contenteditable="true" oninput="handleContentInput()" class="text-right">上海 · 前 5%</div>
+      </div>
+    </section>
+
+    <!-- 工作经历 (三等栏 1:1:1 比例) -->
+    <section class="section-block" style="margin-bottom: 12pt;">
+      <div class="border-b border-black pb-0.5 mb-1.5 flex items-baseline justify-between">
+        <h2 class="text-[12pt] font-bold tracking-wider text-black">工作经历</h2>
+      </div>
+
+      <!-- 工作条目 1 -->
+      <div class="mb-2">
+        <div class="grid-work text-subhead font-semibold leading-normal">
+          <div contenteditable="true" oninput="handleContentInput()">某知名科技有限责任公司</div>
+          <div contenteditable="true" oninput="handleContentInput()" class="text-center">高级产品工程师 · 核心引擎组</div>
+          <div contenteditable="true" oninput="handleContentInput()" class="text-right">2022.07 - 至今</div>
+        </div>
+        <ul class="list-disc list-inside text-body space-y-0.5 mt-1 text-gray-800">
+          <li contenteditable="true" oninput="handleContentInput()">负责桌面端协同工具排版渲染引擎自研，首屏渲染延迟降低 42%，内存占用优化 35%。</li>
+          <li contenteditable="true" oninput="handleContentInput()">主导重构跨平台富文本与分页度量算法，实现亚像素级 A4 打印与 PDF 导出对齐。</li>
+          <li contenteditable="true" oninput="handleContentInput()">主推无工具栏快捷键优先交互范式，将资深用户内容编辑流转速度提升近一倍。</li>
+        </ul>
+      </div>
+
+      <!-- 工作条目 2 -->
+      <div>
+        <div class="grid-work text-subhead font-semibold leading-normal">
+          <div contenteditable="true" oninput="handleContentInput()">某创新互联网工作室</div>
+          <div contenteditable="true" oninput="handleContentInput()" class="text-center">产品设计师 &amp; 前端开发</div>
+          <div contenteditable="true" oninput="handleContentInput()" class="text-right">2020.07 - 2022.06</div>
+        </div>
+        <ul class="list-disc list-inside text-body space-y-0.5 mt-1 text-gray-800">
+          <li contenteditable="true" oninput="handleContentInput()">主导 3 款轻量级个人生产力工具的体验架构设计，覆盖 macOS 深度桌面用户群体。</li>
+          <li contenteditable="true" oninput="handleContentInput()">建立本地持久化事务机制与版本快照流，解决弱网与离线环境下的文字丢失痛点。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 项目经验 (三等栏 1:1:1 比例) -->
+    <section class="section-block" style="margin-bottom: 12pt;">
+      <div class="border-b border-black pb-0.5 mb-1.5 flex items-baseline justify-between">
+        <h2 class="text-[12pt] font-bold tracking-wider text-black">项目经历</h2>
+      </div>
+
+      <div class="mb-2">
+        <div class="grid-work text-subhead font-semibold leading-normal">
+          <div contenteditable="true" oninput="handleContentInput()">PaperCraft 本地排版系统</div>
+          <div contenteditable="true" oninput="handleContentInput()" class="text-center">独立开发 / 核心架构</div>
+          <div contenteditable="true" oninput="handleContentInput()" class="text-right">2023.03 - 2023.11</div>
+        </div>
+        <ul class="list-disc list-inside text-body space-y-0.5 mt-1 text-gray-800">
+          <li contenteditable="true" oninput="handleContentInput()">纯本地运行的极简排版套件，支持 0.5mm 进阶留白调控与多重基线自动铺满算法。</li>
+          <li contenteditable="true" oninput="handleContentInput()">设计版本定版隔离存储结构，用户在任何时刻均可一键回溯历史快照，杜绝误操作覆盖。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 技能与其他 -->
+    <section class="section-block" style="margin-bottom: 8pt;">
+      <div class="border-b border-black pb-0.5 mb-1.5 flex items-baseline justify-between">
+        <h2 class="text-[12pt] font-bold tracking-wider text-black">专业技能</h2>
+      </div>
+      <div contenteditable="true" oninput="handleContentInput()" class="text-body text-gray-800 leading-normal">
+        <strong>工程与设计：</strong>熟练掌握 macOS 设计语言、TypeScript、Web 矢量图形学、CSS Paged Media 规范；注重极简工作流与沉浸式键盘交互。
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 核心交互组件：始终可访问的搜索框展开表单 (模态/浮层) -->
+  <!-- ========================================================================= -->
+  <div id="searchDropdownBackdrop" class="fixed inset-0 bg-black/30 z-50 flex items-start justify-center pt-20 hidden mac-blur" onclick="handleSearchBackdropClick(event)">
+    <div id="searchDropdownDialog" class="w-[560px] max-w-[90vw] bg-white rounded-xl shadow-2xl border border-black/10 overflow-hidden flex flex-col max-h-[75vh]" onclick="event.stopPropagation()">
+      <!-- 搜索输入头 -->
+      <div class="p-3 bg-[#F8F9FA] border-b border-gray-200 flex items-center space-x-2.5">
+        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" id="globalSearchInput" placeholder="按简历名称或定版名称搜索..." oninput="filterSearchResults(this.value)" class="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 focus:outline-none">
+        <kbd class="text-[10px] text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">ESC 退出</kbd>
+      </div>
+
+      <!-- 搜索模式说明栏 -->
+      <div class="px-4 py-1.5 bg-[#F1F3F5] text-[11px] text-gray-500 border-b border-gray-200 flex justify-between items-center">
+        <span>点击即可直接载入编辑，无需跳转独立管理页</span>
+        <span>显示：所属简历 · 定版名 · 更新时间</span>
+      </div>
+
+      <!-- 可滚动结果表单 -->
+      <div class="flex-1 overflow-y-auto p-2 divide-y divide-gray-100" id="searchResultList">
+        <!-- JS 动态注入匹配的简历最新稿与历史定版 -->
+      </div>
+
+      <!-- 无搜索结果状态 (Empty State) -->
+      <div id="searchEmptyState" class="p-10 text-center flex flex-col items-center justify-center hidden">
+        <div class="w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="text-xs font-medium text-gray-700">无匹配简历或历史定版</div>
+        <div class="text-[11px] text-gray-400 mt-0.5">请尝试输入“通用”、“投递”或“第一稿”</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 核心交互组件：⌘S 命名定版弹窗 (明确不让用户误会⌘S才存文字) -->
+  <!-- ========================================================================= -->
+  <div id="snapshotModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center hidden mac-blur" onclick="closeSnapshotModal()">
+    <div class="w-[440px] max-w-[90vw] bg-white rounded-xl shadow-2xl border border-black/15 overflow-hidden p-5" onclick="event.stopPropagation()">
+      <div class="flex items-center space-x-2.5 mb-2">
+        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">保留当前定版 (Snapshot)</h3>
+          <p class="text-[11px] text-gray-500">归档于所属简历：<span class="font-medium text-gray-700" id="modalBelongsToResume">林舟 · 通用简历</span></p>
+        </div>
+      </div>
+
+      <!-- 核心文案：消除只有⌘S才保存的误解 -->
+      <div class="my-3 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-800 flex items-start space-x-2">
+        <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="leading-relaxed">
+          <strong>您输入的文字已自动保存至最新草稿。</strong><br>
+          定版用于在投递或交卷前建立一份<strong>冻结不可修改的历史里程碑</strong>，包含此刻的全部排版与内容。
+        </div>
+      </div>
+
+      <!-- 定版命名输入框 -->
+      <div class="space-y-1 mt-3">
+        <label class="text-xs font-semibold text-gray-700">定版名称</label>
+        <input type="text" id="snapshotNameInput" value="大厂投递定版" placeholder="例如：2026秋招投递版、第一稿..." class="w-full text-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="mt-5 flex justify-end space-x-2">
+        <button onclick="closeSnapshotModal()" class="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md">
+          取消
+        </button>
+        <button onclick="confirmCreateSnapshot()" class="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-2xs">
+          建立定版归档
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 核心交互组件：打开旧定版前保护当前稿确认框 [标注待业务确认] -->
+  <!-- ========================================================================= -->
+  <div id="snapshotProtectModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center hidden mac-blur" onclick="closeProtectModal()">
+    <div class="w-[480px] max-w-[90vw] bg-white rounded-xl shadow-2xl border border-black/15 overflow-hidden p-5" onclick="event.stopPropagation()">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center space-x-2 text-amber-600">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <span class="text-sm font-bold text-gray-900">打开历史定版保护</span>
+        </div>
+        <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono font-medium">[此业务细节待用户确认]</span>
+      </div>
+
+      <div class="mt-3 text-xs text-gray-600 leading-relaxed">
+        即将打开历史定版：<strong class="text-gray-900" id="protectTargetName">「第一稿」</strong>。<br>
+        历史定版具有归档只读属性，不会因编辑而静默改写。为保护您当前的草稿，请选择打开方式：
+      </div>
+
+      <!-- 3个轻量安全分支 -->
+      <div class="mt-4 space-y-2">
+        <button onclick="handleProtectAction('duplicate')" class="w-full text-left p-2.5 rounded-lg border border-blue-200 hover:border-blue-400 bg-blue-50/50 hover:bg-blue-50 flex items-center justify-between group">
+          <div>
+            <div class="text-xs font-semibold text-blue-900 group-hover:text-blue-700">作为新简历分支编辑 (推荐)</div>
+            <div class="text-[11px] text-blue-700/80">保留现有最新稿不动，基于该定版复制一份全新简历</div>
+          </div>
+          <span class="text-xs text-blue-600 font-bold">↵</span>
+        </button>
+
+        <button onclick="handleProtectAction('overwrite')" class="w-full text-left p-2.5 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold text-gray-800">将此定版还原覆盖为当前草稿</div>
+            <div class="text-[11px] text-gray-500">当前草稿未定版的部分将被历史定版内容替换</div>
+          </div>
+        </button>
+
+        <button onclick="handleProtectAction('viewonly')" class="w-full text-left p-2.5 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold text-gray-800">仅查看与比对 (锁定不可编辑)</div>
+            <div class="text-[11px] text-gray-500">不改动任何当前稿，仅调出定版查阅与导出 PDF</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="mt-4 flex justify-end">
+        <button onclick="closeProtectModal()" class="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 低频入口：本地文件备份与还原弹窗 -->
+  <!-- ========================================================================= -->
+  <div id="backupModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center hidden mac-blur" onclick="closeBackupSheet()">
+    <div class="w-[420px] max-w-[90vw] bg-white rounded-xl shadow-2xl border border-black/15 overflow-hidden p-5" onclick="event.stopPropagation()">
+      <h3 class="text-sm font-bold text-gray-900 mb-1">本地数据备份与恢复</h3>
+      <p class="text-xs text-gray-500 mb-4 leading-normal">
+        所有简历与历史定版均只保存在此 Mac 本地。无云端账户、无外部收集。
+      </p>
+
+      <div class="space-y-2.5">
+        <button onclick="simulateBackupDownload()" class="w-full py-2 px-3 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-between">
+          <span>导出完整备份包 (.json)</span>
+          <span class="text-gray-400">本地离线</span>
+        </button>
+        <button onclick="simulateRestore()" class="w-full py-2 px-3 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-between">
+          <span>从备份包恢复...</span>
+          <span class="text-gray-400">选择文件</span>
+        </button>
+      </div>
+
+      <div class="mt-5 flex justify-end">
+        <button onclick="closeBackupSheet()" class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 轻量通知浮层 (替代原生 alert) -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 bg-[#24292E] text-white text-xs px-4 py-2.5 rounded-lg shadow-xl border border-white/10 flex items-center space-x-2 transform translate-y-16 opacity-0 transition-all duration-300 pointer-events-none">
+    <span id="toastIcon" class="w-2 h-2 rounded-full bg-blue-400"></span>
+    <span id="toastMessage">已处理</span>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       状态机与设计数据模型 (全部采用规范虚构数据)
+       ========================================================================== */
+    const appState = {
+      currentDirection: 1, // 1, 2, 3
+      zoom: 85,
+      isSaveFailing: false,
+      autoFillEnabled: false,
+
+      // 排版参数规格
+      layout: {
+        marginTop: 18.0,      // 步长 0.5mm
+        marginBottom: 18.0,   // 步长 0.5mm
+        marginLR: 18.0,       // 左右共用一组
+        bodySizePt: 9.5,      // 8.5 ~ 10.5 pt
+        lineHeight: 1.45,
+        sectionGapPt: 12
+      },
+
+      // 选中的简历与定版
+      activeResumeId: "res-1",
+      activeSnapshotId: null, // null 表示当前最新草稿
+      isReadOnlySnapshot: false,
+
+      // 虚构数据结构：每份简历有1个当前稿与多个命名定版
+      resumes: [
+        {
+          id: "res-1",
+          title: "林舟 · 通用简历",
+          updatedAt: "今天 14:28",
+          isCurrentActive: true,
+          snapshots: [
+            { id: "snap-1-1", name: "第一稿", updatedAt: "2026-10-08 11:20", note: "基础信息与项目初梳理" },
+            { id: "snap-1-2", name: "大厂投递版", updatedAt: "2026-10-09 17:45", note: "重点强化排版渲染引擎成果" }
+          ]
+        },
+        {
+          id: "res-2",
+          title: "林舟 · 数据方向",
+          updatedAt: "昨天 19:10",
+          isCurrentActive: false,
+          snapshots: [
+            { id: "snap-2-1", name: "针对业务数据分析定版", updatedAt: "2026-10-07 15:30", note: "突出性能监控与埋点模型" }
+          ]
+        },
+        {
+          id: "res-3",
+          title: "林舟 · 运营方向",
+          updatedAt: "10月05日 09:12",
+          isCurrentActive: false,
+          snapshots: []
+        }
+      ],
+
+      pendingProtectSnapshot: null
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // 挂载纸张至默认方向 1
+      mountPaperToDirection(1);
+      applyLayoutStyles();
+      renderSidebarTree();
+      registerKeyboardShortcuts();
+      updateSaveStatusDisplay();
+    });
+
+    /* 纸张容器DOM重定位 (保持单份A4 DOM，不重置内容与光标) */
+    function mountPaperToDirection(dir) {
+      const paper = document.getElementById('sharedA4Paper');
+      const targetContainer = document.getElementById(`paperContainer-${dir}`);
+      if (targetContainer && paper) {
+        targetContainer.innerHTML = '';
+        targetContainer.appendChild(paper);
+      }
+    }
+
+    function setDirection(dir) {
+      appState.currentDirection = dir;
+
+      // 隐藏其他视图
+      [1, 2, 3].forEach(d => {
+        const view = document.getElementById(`direction-${d}-view`);
+        const btn = document.getElementById(`dirBtn-${d}`);
+        if (d === dir) {
+          view.classList.remove('hidden');
+          btn.className = "px-3 py-1 rounded text-xs font-medium transition-all bg-blue-600 text-white shadow-sm";
+        } else {
+          view.classList.add('hidden');
+          btn.className = "px-3 py-1 rounded text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-white/5";
+        }
+      });
+
+      // 转移 A4 纸张
+      mountPaperToDirection(dir);
+
+      // 一句话设计说明
+      const pitchEl = document.getElementById('directionPitchText');
+      if (dir === 1) {
+        pitchEl.textContent = "方向一：经典 macOS 顶部 Spotlight 搜索栏 + 右侧独立排版检查器，适合严谨桌面多步微调。";
+      } else if (dir === 2) {
+        pitchEl.textContent = "方向二：无干扰画布 + 悬浮胶囊 HUD，最大化纸张可视面积，适合纯粹沉浸式写作。";
+      } else if (dir === 3) {
+        pitchEl.textContent = "方向三：双栏历史脉络工作台，左侧常驻简历与定版分支树，适合频繁对比多方向投递版本。";
+      }
+
+      syncResumeTitleUI();
+      updateSaveStatusDisplay();
+    }
+
+    function adjustMargin(side, delta) {
+      if (side === 'top') {
+        appState.layout.marginTop = Math.max(8.0, Math.min(35.0, appState.layout.marginTop + delta));
+      } else if (side === 'bottom') {
+        appState.layout.marginBottom = Math.max(8.0, Math.min(35.0, appState.layout.marginBottom + delta));
+      } else if (side === 'lr') {
+        appState.layout.marginLR = Math.max(8.0, Math.min(35.0, appState.layout.marginLR + delta));
+      }
+      applyLayoutStyles();
+      simulateAutoSave();
+    }
+
+    function updateBodySize(val) {
+      appState.layout.bodySizePt = parseFloat(val);
+      applyLayoutStyles();
+      simulateAutoSave();
+    }
+
+    function updateLineHeight(val) {
+      appState.layout.lineHeight = parseFloat(val);
+      applyLayoutStyles();
+      simulateAutoSave();
+    }
+
+    function updateSectionGap(val) {
+      appState.layout.sectionGapPt = parseFloat(val);
+      applyLayoutStyles();
+      simulateAutoSave();
+    }
+
+    function toggleAutoFill() {
+      appState.autoFillEnabled = !appState.autoFillEnabled;
+      if (appState.autoFillEnabled) {
+        // 自动算法示例：智能将字号、间距压制在微满范围
+        appState.layout.marginTop = 16.0;
+        appState.layout.marginBottom = 16.0;
+        appState.layout.marginLR = 16.0;
+        appState.layout.bodySizePt = 9.8;
+        appState.layout.lineHeight = 1.48;
+        appState.layout.sectionGapPt = 13;
+        showToast("已自动调节留白与字号以铺满设定范围", "info");
+      } else {
+        appState.layout.marginTop = 18.0;
+        appState.layout.marginBottom = 18.0;
+        appState.layout.marginLR = 18.0;
+        appState.layout.bodySizePt = 9.5;
+        appState.layout.lineHeight = 1.45;
+        appState.layout.sectionGapPt = 12;
+        showToast("已还原默认标准节奏", "info");
+      }
+      applyLayoutStyles();
+      simulateAutoSave();
+    }
+
+    /* 应用样式至 A4 纸张 DOM 与所有指示器 */
+    function applyLayoutStyles() {
+      const paper = document.getElementById('sharedA4Paper');
+      const { marginTop, marginBottom, marginLR, bodySizePt, lineHeight, sectionGapPt } = appState.layout;
+
+      // 毫米级留白
+      paper.style.paddingTop = `${marginTop}mm`;
+      paper.style.paddingBottom = `${marginBottom}mm`;
+      paper.style.paddingLeft = `${marginLR}mm`;
+      paper.style.paddingRight = `${marginLR}mm`;
+
+      // 同步正文字号 (8.5 - 10.5pt) 及条目/日期正文 +0.5pt
+      const bodyElements = paper.querySelectorAll('.text-body');
+      bodyElements.forEach(el => {
+        el.style.fontSize = `${bodySizePt}pt`;
+        el.style.lineHeight = lineHeight;
+      });
+
+      const subheadElements = paper.querySelectorAll('.text-subhead');
+      subheadElements.forEach(el => {
+        el.style.fontSize = `${bodySizePt + 0.5}pt`;
+      });
+
+      // 模块间距
+      const sectionElements = paper.querySelectorAll('.section-block');
+      sectionElements.forEach(el => {
+        el.style.marginBottom = `${sectionGapPt}pt`;
+      });
+
+      // 更新所有面板数值标签
+      [1, 2, 3].forEach(d => {
+        const topEl = document.getElementById(`labelMarginTop-${d}`);
+        const bottomEl = document.getElementById(`labelMarginBottom-${d}`);
+        const lrEl = document.getElementById(`labelMarginLR-${d}`);
+        const bodyEl = document.getElementById(`labelBodySize-${d}`);
+        const lhEl = document.getElementById(`labelLineHeight-${d}`);
+        const gapEl = document.getElementById(`labelSectionGap-${d}`);
+
+        if (topEl) topEl.textContent = `${marginTop.toFixed(1)} mm`;
+        if (bottomEl) bottomEl.textContent = `${marginBottom.toFixed(1)} mm`;
+        if (lrEl) lrEl.textContent = `${marginLR.toFixed(1)} mm`;
+        if (bodyEl) bodyEl.textContent = `${bodySizePt.toFixed(1)} pt`;
+        if (lhEl) lhEl.textContent = `${lineHeight.toFixed(2)}`;
+        if (gapEl) gapEl.textContent = `${sectionGapPt} pt`;
+      });
+    }
+
+    /* 纸面缩放处理 (保持 A4 几何严整，无水平重排) */
+    function setZoom(val) {
+      appState.zoom = val;
+      document.getElementById('zoomLabel').textContent = `${val}%`;
+      const paper = document.getElementById('sharedA4Paper');
+      if (paper) {
+        paper.style.transform = `scale(${val / 100})`;
+      }
+    }
+
+    let saveTimeout = null;
+    function handleContentInput() {
+      // 正在编辑历史只读定版时的防护
+      if (appState.isReadOnlySnapshot) {
+        showToast("历史定版处于只读保护状态，无法直接改写", "warning");
+        return;
+      }
+      simulateAutoSave();
+    }
+
+    function simulateAutoSave() {
+      if (appState.isSaveFailing) {
+        setAllSaveStatus("failed");
+        return;
+      }
+
+      setAllSaveStatus("saving");
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        if (!appState.isSaveFailing) {
+          const now = new Date();
+          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+          setAllSaveStatus("saved", timeStr);
+        } else {
+          setAllSaveStatus("failed");
+        }
+      }, 350);
+    }
+
+    function setAllSaveStatus(status, timeStr = "") {
+      const statuses = ['dir1SaveStatus', 'dir2SaveStatus', 'dir3SaveStatus'];
+      statuses.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (status === "saved") {
+          el.innerHTML = `
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span class="text-emerald-700">已自动存入最新稿 ${timeStr ? `<span class="opacity-75 font-mono">(${timeStr})</span>` : ''}</span>
+          `;
+          el.className = "flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200";
+        } else if (status === "saving") {
+          el.innerHTML = `
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span class="text-amber-700">正在写入本地...</span>
+          `;
+          el.className = "flex items-center space-x-1.5 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200";
+        } else if (status === "failed") {
+          el.innerHTML = `
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            <span class="text-rose-700 font-semibold">保存失败: 本地磁盘未写入</span>
+            <button onclick="retrySave()" class="ml-1 underline text-rose-800 font-bold hover:text-black">重试</button>
+          `;
+          el.className = "flex items-center space-x-1.5 text-xs text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-300";
+        }
+      });
+    }
+
+    function toggleMockSaveFailure() {
+      appState.isSaveFailing = !appState.isSaveFailing;
+      const btn = document.getElementById('mockSaveBtn');
+      if (appState.isSaveFailing) {
+        btn.textContent = "模拟保存失败中";
+        btn.className = "px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[11px] font-mono hover:bg-rose-500/30";
+        setAllSaveStatus("failed");
+        showToast("已切换为保存失败状态 (真实展示故障，不呈现假已保存)", "warning");
+      } else {
+        btn.textContent = "正常写入中";
+        btn.className = "px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[11px] font-mono hover:bg-emerald-500/30";
+        simulateAutoSave();
+        showToast("已恢复正常本地自动保存", "info");
+      }
+    }
+
+    function retrySave() {
+      showToast("正在重试写入磁盘...", "info");
+      setTimeout(() => {
+        if (!appState.isSaveFailing) {
+          simulateAutoSave();
+        } else {
+          setAllSaveStatus("failed");
+          showToast("重试失败：权限不足或存储介质不可用", "warning");
+        }
+      }, 400);
+    }
+
+    function updateSaveStatusDisplay() {
+      simulateAutoSave();
+    }
+
+    function toggleSearchDropdown(open, fromDirection) {
+      const backdrop = document.getElementById('searchDropdownBackdrop');
+      const input = document.getElementById('globalSearchInput');
+      if (open) {
+        backdrop.classList.remove('hidden');
+        input.value = "";
+        filterSearchResults("");
+        setTimeout(() => input.focus(), 50);
+      } else {
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function handleSearchBackdropClick(event) {
+      toggleSearchDropdown(false);
+    }
+
+    function filterSearchResults(query) {
+      const container = document.getElementById('searchResultList');
+      const emptyState = document.getElementById('searchEmptyState');
+      const q = query.trim().toLowerCase();
+
+      let results = [];
+
+      appState.resumes.forEach(res => {
+        // 简历当前最新稿条目
+        if (!q || res.title.toLowerCase().includes(q) || "当前最新稿".includes(q)) {
+          results.push({
+            type: 'draft',
+            resumeId: res.id,
+            snapshotId: null,
+            resumeTitle: res.title,
+            displayName: "当前最新草稿",
+            time: res.updatedAt,
+            isCurrent: res.id === appState.activeResumeId && appState.activeSnapshotId === null
+          });
+        }
+
+        // 历史定版条目
+        res.snapshots.forEach(snap => {
+          if (!q || res.title.toLowerCase().includes(q) || snap.name.toLowerCase().includes(q) || (snap.note && snap.note.toLowerCase().includes(q))) {
+            results.push({
+              type: 'snapshot',
+              resumeId: res.id,
+              snapshotId: snap.id,
+              resumeTitle: res.title,
+              displayName: snap.name,
+              time: snap.updatedAt,
+              note: snap.note,
+              isCurrent: res.id === appState.activeResumeId && appState.activeSnapshotId === snap.id
+            });
+          }
+        });
+      });
+
+      if (results.length === 0) {
+        container.innerHTML = "";
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = results.map(item => `
+        <div onclick="selectSearchResult('${item.resumeId}', ${item.snapshotId ? `'${item.snapshotId}'` : 'null'})" class="p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center justify-between transition-colors group">
+          <div class="flex items-center space-x-3">
+            <span class="w-6 h-6 rounded flex items-center justify-center text-xs ${item.type === 'draft' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">
+              ${item.type === 'draft' ? '稿' : '定'}
+            </span>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-semibold text-gray-900 group-hover:text-blue-600">${item.displayName}</span>
+                <span class="text-[11px] text-gray-400 font-normal">(${item.resumeTitle})</span>
+                ${item.isCurrent ? '<span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-medium">当前正编辑</span>' : ''}
+              </div>
+              ${item.note ? `<div class="text-[11px] text-gray-400 mt-0.5">${item.note}</div>` : ''}
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-400 font-mono">${item.time}</div>
+            <div class="text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 font-medium">载入编辑 ↵</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectSearchResult(resumeId, snapshotId) {
+      toggleSearchDropdown(false);
+
+      if (snapshotId) {
+        // 用户点击了历史定版，触发定版保护机制
+        const targetResume = appState.resumes.find(r => r.id === resumeId);
+        const targetSnapshot = targetResume ? targetResume.snapshots.find(s => s.id === snapshotId) : null;
+        triggerOpenOldSnapshotProtection(targetResume, targetSnapshot);
+      } else {
+        // 用户切换至某份简历的当前草稿
+        switchActiveResume(resumeId);
+        showToast("已载入最新草稿", "info");
+      }
+    }
+
+    function triggerOpenOldSnapshotProtection(resume, snapshot) {
+      appState.pendingProtectSnapshot = { resume, snapshot };
+      document.getElementById('protectTargetName').textContent = `「${snapshot.name}」(${resume.title})`;
+      document.getElementById('snapshotProtectModal').classList.remove('hidden');
+    }
+
+    function closeProtectModal() {
+      document.getElementById('snapshotProtectModal').classList.add('hidden');
+      appState.pendingProtectSnapshot = null;
+    }
+
+    function handleProtectAction(actionType) {
+      const { resume, snapshot } = appState.pendingProtectSnapshot;
+      closeProtectModal();
+
+      if (actionType === 'duplicate') {
+        // 分支：创建新副本
+        const newTitle = `${resume.title} · 基于${snapshot.name}的分支`;
+        const newRes = {
+          id: `res-${Date.now()}`,
+          title: newTitle,
+          updatedAt: "刚刚",
+          snapshots: []
+        };
+        appState.resumes.unshift(newRes);
+        appState.activeResumeId = newRes.id;
+        appState.activeSnapshotId = null;
+        appState.isReadOnlySnapshot = false;
+        renderSidebarTree();
+        syncResumeTitleUI();
+        showToast(`已创建新独立简历副本：${newTitle}`, "info");
+      } else if (actionType === 'overwrite') {
+        // 覆盖当前稿
+        appState.activeResumeId = resume.id;
+        appState.activeSnapshotId = null;
+        appState.isReadOnlySnapshot = false;
+        syncResumeTitleUI();
+        simulateAutoSave();
+        showToast(`已将「${snapshot.name}」还原覆盖到当前草稿`, "info");
+      } else if (actionType === 'viewonly') {
+        // 仅只读查阅
+        appState.activeResumeId = resume.id;
+        appState.activeSnapshotId = snapshot.id;
+        appState.isReadOnlySnapshot = true;
+        syncResumeTitleUI();
+        showToast(`已载入定版「${snapshot.name}」(只读查阅与比对)`, "info");
+      }
+    }
+
+    function openSnapshotModal() {
+      const activeRes = appState.resumes.find(r => r.id === appState.activeResumeId);
+      document.getElementById('modalBelongsToResume').textContent = activeRes ? activeRes.title : "当前简历";
+      document.getElementById('snapshotNameInput').value = `投递定版-${new Date().toLocaleDateString()}`;
+      document.getElementById('snapshotModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('snapshotNameInput').select(), 50);
+    }
+
+    function closeSnapshotModal() {
+      document.getElementById('snapshotModal').classList.add('hidden');
+    }
+
+    function confirmCreateSnapshot() {
+      const name = document.getElementById('snapshotNameInput').value.trim() || "未命名定版";
+      const activeRes = appState.resumes.find(r => r.id === appState.activeResumeId);
+
+      if (activeRes) {
+        const newSnap = {
+          id: `snap-${Date.now()}`,
+          name: name,
+          updatedAt: "刚刚",
+          note: "由用户主动触发 ⌘S 冻结"
+        };
+        activeRes.snapshots.unshift(newSnap);
+        renderSidebarTree();
+      }
+
+      closeSnapshotModal();
+      showToast(`已固化定版「${name}」，草稿编辑仍将自动保存`, "info");
+    }
+
+    function createNewResume() {
+      const count = appState.resumes.length + 1;
+      const newResume = {
+        id: `res-${Date.now()}`,
+        title: `林舟 · 新简历方向 (${count})`,
+        updatedAt: "刚刚",
+        snapshots: []
+      };
+      appState.resumes.unshift(newResume);
+      switchActiveResume(newResume.id);
+      renderSidebarTree();
+      showToast("已创建独立新简历", "info");
+    }
+
+    function duplicateCurrentResume() {
+      const current = appState.resumes.find(r => r.id === appState.activeResumeId);
+      if (!current) return;
+      const copy = {
+        id: `res-${Date.now()}`,
+        title: `${current.title} (副本)`,
+        updatedAt: "刚刚",
+        snapshots: current.snapshots.map(s => ({ ...s, id: `snap-cp-${Date.now()}` }))
+      };
+      appState.resumes.unshift(copy);
+      switchActiveResume(copy.id);
+      renderSidebarTree();
+      showToast(`已完整复制当前简历与定版`, "info");
+    }
+
+    function promptRenameResume() {
+      const current = appState.resumes.find(r => r.id === appState.activeResumeId);
+      if (!current) return;
+      const newTitle = prompt("修改简历名称:", current.title);
+      if (newTitle && newTitle.trim()) {
+        current.title = newTitle.trim();
+        syncResumeTitleUI();
+        renderSidebarTree();
+        showToast("简历名称已更新", "info");
+      }
+    }
+
+    function switchActiveResume(id) {
+      appState.activeResumeId = id;
+      appState.activeSnapshotId = null;
+      appState.isReadOnlySnapshot = false;
+      syncResumeTitleUI();
+      renderSidebarTree();
+      simulateAutoSave();
+    }
+
+    function syncResumeTitleUI() {
+      const current = appState.resumes.find(r => r.id === appState.activeResumeId);
+      const title = current ? current.title : "未命名简历";
+      const displayTitle = appState.activeSnapshotId ? `${title} · [定版只读]` : title;
+
+      const t1 = document.getElementById('dir1ResumeTitle');
+      const t2 = document.getElementById('dir2ResumeTitle');
+      const t3 = document.getElementById('dir3ResumeTitle');
+
+      if (t1) t1.textContent = displayTitle;
+      if (t2) t2.textContent = displayTitle;
+      if (t3) t3.textContent = displayTitle;
+    }
+
+    /* 渲染方向三的侧栏层级树 */
+    function renderSidebarTree() {
+      const container = document.getElementById('sidebarResumeTree');
+      if (!container) return;
+
+      container.innerHTML = appState.resumes.map(res => {
+        const isActive = res.id === appState.activeResumeId;
+        return `
+          <div class="rounded-md overflow-hidden ${isActive ? 'bg-white shadow-2xs border border-gray-200' : 'hover:bg-gray-200/50'} p-1.5 transition-all">
+            <div onclick="switchActiveResume('${res.id}')" class="flex items-center justify-between cursor-pointer">
+              <div class="flex items-center space-x-1.5 truncate">
+                <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-blue-600' : 'bg-gray-400'}"></span>
+                <span class="text-xs font-semibold text-gray-800 truncate">${res.title}</span>
+              </div>
+              <span class="text-[10px] text-gray-400 shrink-0 font-mono">${res.updatedAt}</span>
+            </div>
+
+            <!-- 定版收纳树 -->
+            <div class="mt-1 pl-3 border-l border-gray-200 ml-1 space-y-0.5">
+              <div onclick="switchActiveResume('${res.id}')" class="text-[11px] py-0.5 px-1 rounded flex items-center justify-between cursor-pointer ${isActive && appState.activeSnapshotId === null ? 'text-blue-700 font-semibold' : 'text-gray-500 hover:text-gray-800'}">
+                <span>· 当前稿 (自动同步)</span>
+              </div>
+              ${res.snapshots.map(s => `
+                <div onclick="selectSearchResult('${res.id}', '${s.id}')" class="text-[11px] py-0.5 px-1 rounded flex items-center justify-between cursor-pointer ${isActive && appState.activeSnapshotId === s.id ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-gray-500 hover:text-gray-800'}">
+                  <span class="truncate">· 定版: ${s.name}</span>
+                  <span class="text-[9px] text-gray-400 font-mono">${s.updatedAt.split(' ')[0]}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function registerKeyboardShortcuts() {
+      window.addEventListener('keydown', (e) => {
+        // ⌘S (或 Ctrl+S)
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          openSnapshotModal();
+        }
+        // ⌘K (或 Ctrl+K) 唤起搜索
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          toggleSearchDropdown(true);
+        }
+        // ESC 键关闭模态窗
+        if (e.key === 'Escape') {
+          toggleSearchDropdown(false);
+          closeSnapshotModal();
+          closeProtectModal();
+          closeBackupSheet();
+        }
+      });
+    }
+
+    function exportPdf() {
+      showToast("正在渲染高质量单页矢量 A4 PDF...", "info");
+      setTimeout(() => {
+        showToast("PDF 导出就绪：已严格按 0.5mm 留白与字体规格生成", "info");
+      }, 700);
+    }
+
+    function openBackupSheet() {
+      document.getElementById('backupModal').classList.remove('hidden');
+    }
+    function closeBackupSheet() {
+      document.getElementById('backupModal').classList.add('hidden');
+    }
+
+    function simulateBackupDownload() {
+      showToast("已将全部简历与定版打包下载为 ResumeData.json", "info");
+      closeBackupSheet();
+    }
+    function simulateRestore() {
+      showToast("本地还原完成：已校对所有版本", "info");
+      closeBackupSheet();
+    }
+
+    /* 轻量 Toast 提示 */
+    let toastTimer = null;
+    function showToast(msg, type = "info") {
+      const toast = document.getElementById('toastNotification');
+      const text = document.getElementById('toastMessage');
+      const icon = document.getElementById('toastIcon');
+
+      text.textContent = msg;
+      if (type === "warning") {
+        icon.className = "w-2 h-2 rounded-full bg-amber-400";
+      } else {
+        icon.className = "w-2 h-2 rounded-full bg-blue-400";
+      }
+
+      toast.classList.remove('translate-y-16', 'opacity-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0');
+      }, 2600);
+    }
+  </script>
+</body>
+</html>
