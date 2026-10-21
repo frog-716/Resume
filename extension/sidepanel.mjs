@@ -19,6 +19,7 @@ const elements = {
   renameForm: byId('rename-form'), renameName: byId('rename-name'), confirmDialog: byId('confirm-dialog'),
   confirmForm: byId('confirm-form'), confirmTitle: byId('confirm-title'), confirmMessage: byId('confirm-message'),
   confirmAction: byId('confirm-action'), toast: byId('toast'), export: byId('export-pdf'), sortHandle: byId('sort-handle'),
+  importButton: byId('import-direction'), importFile: byId('import-file'),
 };
 
 const ICONS = {
@@ -26,7 +27,7 @@ const ICONS = {
   email: 'M3 5.5h18v13H3z M3.5 6.2 12 12.5l8.5-6.3',
   wechat: 'M8.5 6.2c-3.1 0-5.7 2-5.7 4.6 0 1.5.8 2.8 2.2 3.7l-.6 2 2.3-1.2c.6.2 1.2.3 1.8.3h.5c-.1-.4-.2-.8-.2-1.2 0-2.7 2.7-4.9 6-4.9h.5c-.2-1.9-2.3-3.3-4.8-3.3H8.5Zm6.6 4.7c-2.5 0-4.6 1.5-4.6 3.4s2.1 3.4 4.6 3.4c.5 0 1-.1 1.5-.2l1.8.9-.5-1.5c1.1-.6 1.8-1.5 1.8-2.6 0-1.9-2.1-3.4-4.6-3.4Z',
   website: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M3 12h18 M12 3c-5 5-5 13 0 18 M12 3c5 5 5 13 0 18',
-  github: '<svg class="github-cat" role="img" aria-label="GitHub" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>',
+  github: '<svg class="github-cat" role="img" aria-label="GitHub" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" preserveAspectRatio="xMidYMid meet"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9 7V4.8h6V7m-8.4 0 1 13h8.8l-1-13M10 10.2v6.8m4-6.8v6.8"/></svg>',
 };
 
@@ -707,6 +708,49 @@ async function createDirection() {
   storeState.directions.push(direction); resetEditorState(direction); await persistStore();
   elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
 }
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * Import a resume direction from a JSON file. Accepts either a bare resume
+ * content document or a wrapper `{ name, content }`. Validation reuses the
+ * same domain validator as storage loading, so an invalid file never enters
+ * the store. The new direction is independent after import (S-03).
+ */
+async function importDirectionFromFile(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFileAsText(file));
+  } catch (error) {
+    showToast(`导入失败：文件不是有效的 JSON。原因：${error.message}`, 'error');
+    return;
+  }
+  const content = parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.content && typeof parsed.content === 'object'
+    ? parsed.content
+    : parsed;
+  const nameFromWrapper = typeof parsed?.name === 'string' ? parsed.name.trim() : '';
+  const nameFromContent = content?.identity?.name?.html ? plainTextFromHtml(content.identity.name.html).trim() : '';
+  const validation = validateResumeContent(content);
+  if (!validation.valid) {
+    showToast(`导入失败：简历内容不符合格式。${validation.errors.slice(0, 2).join('；')}`, 'error');
+    return;
+  }
+  if (!(await saveNow())) return;
+  const direction = makeDirection(nameFromWrapper || nameFromContent || '导入的方向', content, DEFAULT_LAYOUT);
+  storeState.directions.push(direction);
+  resetEditorState(direction);
+  await persistStore();
+  elements.importFile.value = '';
+  renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
+  showToast(`已导入「${direction.name}」，可开始编辑。`, 'success');
+}
+
 function openRenameDirection(id) {
   const direction = findDirection(id); if (!direction) return;
   pendingRenameId = id; elements.renameName.value = direction.name; openDialog(elements.renameDialog); elements.renameName.focus(); elements.renameName.select();
@@ -757,6 +801,12 @@ function installEvents() {
   byId('open-directions').addEventListener('click', openDirections);
   byId('back-editor').addEventListener('click', () => setView('editor'));
   byId('create-direction').addEventListener('click', openCreateDirection);
+  elements.importButton.addEventListener('click', () => elements.importFile.click());
+  elements.importFile.addEventListener('change', async () => {
+    const file = elements.importFile.files?.[0];
+    elements.importFile.value = '';
+    if (file) await importDirectionFromFile(file).catch((error) => showToast(`导入失败：${error.message}`, 'error'));
+  });
   elements.directionSearch.addEventListener('input', renderDirections);
   elements.directionGrid.addEventListener('click', async (event) => {
     const rename = event.target.closest('[data-rename-direction]'); if (rename) { event.stopPropagation(); openRenameDirection(rename.dataset.renameDirection); return; }

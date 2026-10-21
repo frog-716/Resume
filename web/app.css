@@ -12,7 +12,7 @@
 .run-zh{font-family:"PingFang SC",sans-serif}
 .run-en{font-family:"Times New Roman",serif}
 .run-num{font-family:"Times New Roman",serif}
-.github-icon svg{width:14px;height:14px;display:block;fill:currentColor}
+.github-cat{display:inline-block;flex:0 0 14px;width:14px;height:14px;color:#555}
 .contact-add-menu{position:absolute;z-index:20;left:50%;top:calc(100% - 8px);transform:translateX(-50%);display:flex;gap:6px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s ease;background:#fff;border:1px solid #e4deeb;border-radius:9px;padding:5px;box-shadow:0 5px 18px #29203220;white-space:nowrap}
 .identity:hover .contact-add-menu,.identity:focus-within .contact-add-menu{opacity:1;visibility:visible;pointer-events:auto}
 .contact-add-menu button{font-size:11px;padding:4px 8px;border-radius:6px}
