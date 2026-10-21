@@ -53,6 +53,7 @@ body { overflow: hidden; }
 .zoom-readout { min-width: 42px !important; padding: 0 4px !important; font-variant-numeric: tabular-nums; }
 .library-view { padding: 10px; }
 .library-header { gap: 6px; margin-bottom: 10px; }
+.import-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 10px;padding:7px 10px;border:1px dashed var(--line,#ddd6e5);border-radius:10px;background:#faf8fc;font-size:11.5px;color:#7a6d83}.import-status[hidden]{display:none}.import-status .import-status-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.import-status .import-reimport{min-height:30px;padding:0 12px;font-size:12px;border-radius:9px;flex:0 0 auto}
 .library-header .back-button { flex: 0 0 32px; width: 32px; min-height: 32px; }
 .search-wrap { height: 34px; padding: 0 8px; border-radius: 8px; }
 .search-wrap input { font-size: 12px; }

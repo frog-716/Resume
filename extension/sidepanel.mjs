@@ -1,6 +1,7 @@
 import { fitResumeLayout } from './domain-auto-layout.mjs';
 import { createEmptyResumeContent, validateResumeContent } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
+import { supportsFileSystemAccess, pickImportFile, saveImportHandle, loadImportSource, readTextFromHandle } from './import-source.mjs';
 
 const PAPER_WIDTH_PX = 793.7;
 const PAPER_HEIGHT_PX = 1122.5;
@@ -19,7 +20,7 @@ const elements = {
   renameForm: byId('rename-form'), renameName: byId('rename-name'), confirmDialog: byId('confirm-dialog'),
   confirmForm: byId('confirm-form'), confirmTitle: byId('confirm-title'), confirmMessage: byId('confirm-message'),
   confirmAction: byId('confirm-action'), toast: byId('toast'), export: byId('export-pdf'), sortHandle: byId('sort-handle'),
-  importButton: byId('import-direction'), importFile: byId('import-file'),
+  importButton: byId('import-direction'), importFile: byId('import-file'), importStatus: byId('import-status'),
 };
 
 const ICONS = {
@@ -102,7 +103,7 @@ function makeDirection(name, content = createEmptyResumeContent(), currentLayout
 }
 function initialState() {
   const direction = makeDirection('我的简历');
-  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
+  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction], lastImport: null };
 }
 function extensionStorageGet(key) {
   if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.get(key, (value) => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(value[key])));
@@ -121,7 +122,10 @@ async function loadStore() {
     return;
   }
   const validDirections = saved.directions.filter((direction) => direction && direction.id && direction.name && direction.currentDraft && validateResumeContent(direction.currentDraft.content).valid);
-  storeState = validDirections.length ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions: validDirections } : initialState();
+  // lastImport 只是"上次导入来源"的展示与再导入元数据，随 store 原样保留（旧版本无此字段时为 null）。
+  storeState = validDirections.length
+    ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions: validDirections, lastImport: saved.lastImport || null }
+    : initialState();
   if (!storeState.directions.some((item) => item.id === storeState.lastOpenedDirectionId)) storeState.lastOpenedDirectionId = storeState.directions[0].id;
 }
 async function persistStore(snapshot = storeState) {
@@ -662,6 +666,7 @@ function renderDirections() {
   const query = elements.directionSearch.value.trim().toLowerCase();
   const directions = storeState.directions.filter((direction) => !query || direction.name.toLowerCase().includes(query));
   elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
+  renderImportStatus();
   updateCardScales();
 }
 function renderDirectionCard(direction) {
@@ -722,8 +727,12 @@ function readFileAsText(file) {
  * content document or a wrapper `{ name, content }`. Validation reuses the
  * same domain validator as storage loading, so an invalid file never enters
  * the store. The new direction is independent after import (S-03).
+ *
+ * `handle`（可选）是 File System Access 的文件句柄：传入时连同 lastImport
+ * 元数据一起持久化，使"导入的路径"在会话之间可靠保留，重开会话后可一键
+ * 重新导入同一文件；不传（input 降级路径）时只记录文件名。
  */
-async function importDirectionFromFile(file) {
+async function importDirectionFromFile(file, handle = null) {
   let parsed;
   try {
     parsed = JSON.parse(await readFileAsText(file));
@@ -745,10 +754,59 @@ async function importDirectionFromFile(file) {
   const direction = makeDirection(nameFromWrapper || nameFromContent || '导入的方向', content, DEFAULT_LAYOUT);
   storeState.directions.push(direction);
   resetEditorState(direction);
+  // 记住导入来源：handle 进 IndexedDB（可跨会话重新授权读取），
+  // 元数据随主 store 进 chrome.storage。任一步失败不阻断导入本身。
+  if (handle) { try { await saveImportHandle(handle); } catch (error) { showToast(`已导入，但记住文件来源失败：${error.message}`, 'error'); } }
+  storeState.lastImport = { fileName: file.name || handle?.name || '未命名文件', importedAt: nowIso(), directionId: direction.id, persisted: Boolean(handle) };
   await persistStore();
   elements.importFile.value = '';
   renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
   showToast(`已导入「${direction.name}」，可开始编辑。`, 'success');
+}
+
+/**
+ * 从上次记住的来源文件重新导入（数据持久化的消费端）。
+ * 在手势内触发：queryPermission 已过期时 requestPermission 才合规。
+ */
+async function reimportFromLastSource() {
+  let source = null;
+  try { source = await loadImportSource(); } catch { source = null; }
+  if (!source?.handle) {
+    showToast('没有可重新导入的来源记录，请用“导入”按钮选择文件。', 'error');
+    return;
+  }
+  try {
+    const text = await readTextFromHandle(source.handle);
+    await importDirectionFromFile(new File([text], source.fileName, { type: 'application/json' }), source.handle);
+  } catch (error) {
+    if (error && (error.message === 'NEED_PERMISSION' || error.message === 'PERMISSION_DENIED')) {
+      showToast(`读取「${source.fileName}」需要重新授权，请用“导入”按钮再选一次该文件。`, 'error');
+      return;
+    }
+    showToast(`重新导入失败：${error.message}`, 'error');
+  }
+}
+
+/** 方向室渲染"上次导入"状态条：文件名 + 时间 + 重新导入按钮（有持久句柄时）。 */
+function renderImportStatus() {
+  const last = storeState.lastImport;
+  if (!last) { elements.importStatus.hidden = true; elements.importStatus.replaceChildren(); return; }
+  elements.importStatus.hidden = false;
+  const label = document.createElement('span');
+  label.className = 'import-status-text';
+  const when = (last.importedAt || '').replace('T', ' ').slice(0, 16);
+  label.textContent = `上次导入：${last.fileName}${when ? ` · ${when}` : ''}`;
+  label.title = last.persisted ? '该来源已记住，可一键重新导入' : '该来源未记住文件句柄，重新导入需重新选择文件';
+  elements.importStatus.replaceChildren(label);
+  if (last.persisted) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'quiet-button import-reimport';
+    button.textContent = '重新导入';
+    button.title = '重新读取上次导入的文件并生成新方向';
+    button.addEventListener('click', () => { reimportFromLastSource().catch((error) => showToast(`重新导入失败：${error.message}`, 'error')); });
+    elements.importStatus.append(button);
+  }
 }
 
 function openRenameDirection(id) {
@@ -817,7 +875,23 @@ function installEvents() {
   byId('open-directions').addEventListener('click', openDirections);
   byId('back-editor').addEventListener('click', () => setView('editor'));
   byId('create-direction').addEventListener('click', openCreateDirection);
-  elements.importButton.addEventListener('click', () => elements.importFile.click());
+  elements.importButton.addEventListener('click', async () => {
+    // 优先 File System Access API：拿到可持久化的文件句柄，"导入的来源"
+    // 才能随 IndexedDB 跨会话保留，重开会话后可一键重新导入。
+    if (supportsFileSystemAccess()) {
+      let handle;
+      try {
+        handle = await pickImportFile();
+      } catch { handle = null; }
+      if (handle === undefined) return; // 用户在选取器里取消
+      if (handle) {
+        const file = await handle.getFile();
+        await importDirectionFromFile(file, handle).catch((error) => showToast(`导入失败：${error.message}`, 'error'));
+        return;
+      }
+    }
+    elements.importFile.click(); // 降级：普通文件选择（不记来源句柄）
+  });
   elements.importFile.addEventListener('change', async () => {
     const file = elements.importFile.files?.[0];
     elements.importFile.value = '';
