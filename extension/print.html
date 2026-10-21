@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>打印简历</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <style>
+    /* 屏幕预览：按 1:1 显示 A4 纸面；打印时提示条隐藏，纸面交由 sidepanel.css 的 @media print 接管。 */
+    :root { --paper-width: 210mm; --paper-height: 297mm; --paper-scale: 1; }
+    @media screen {
+      html, body { height: auto; min-height: 100%; overflow: auto; }
+      body { background: #ece8f1; }
+      .print-hint {
+        position: sticky; top: 0; z-index: 10;
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 16px; background: #fff; border-bottom: 1px solid #ded7e6;
+        font: 13px/1.5 "PingFang SC", sans-serif; color: #3e3150;
+      }
+      .print-hint[hidden] { display: none; }
+      .print-hint button {
+        min-height: 30px; padding: 0 12px; border: 1px solid #ded7e6; border-radius: 8px;
+        background: #fff; color: #3e3150; font: inherit; cursor: pointer;
+      }
+      .print-hint button.primary { border-color: transparent; background: #6b4f9e; color: #fff; }
+    }
+    @media print { .print-hint { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="print-hint" id="print-hint" role="status">正在打开打印预览…</div>
+  <div id="app" class="app-shell">
+    <main class="workspace">
+      <div class="paper-scroller">
+        <div class="paper-space" id="paper-space"></div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="print.mjs"></script>
+</body>
+</html>

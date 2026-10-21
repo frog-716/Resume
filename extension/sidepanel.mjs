@@ -774,15 +774,31 @@ async function deleteDirection(id) {
   if (wasActive) { renderPaper(); setView('editor'); scheduleFit(); }
   else renderDirections();
 }
+const PRINT_PAYLOAD_KEY = 'print-payload';
 async function printPdf() {
   // Re-measure immediately so a click made during the autosave debounce cannot
   // print a stale layout decision.
   applyAutoFit();
   if (exportBlockedReason) { showToast(exportBlockedReason, 'error'); return; }
   if (!(await saveNow())) return;
-  const oldTitle = document.title; document.title = activeDirection?.name || '简历';
-  window.print();
-  window.setTimeout(() => { document.title = oldTitle; }, 1500);
+  // Chrome 侧边栏是受限渲染面，window.print() 不可靠（Chromium 已知缺陷）。
+  // 改为把当前已适配好的纸面快照交给独立打印页，在真实标签页里打印：
+  // 输出与侧边栏所见一致，A4 与 @media print 规则稳定生效。
+  const paper = elements.paper.cloneNode(true);
+  paper.querySelectorAll('[contenteditable]').forEach((element) => {
+    element.removeAttribute('contenteditable');
+    element.removeAttribute('data-edit');
+    element.removeAttribute('data-placeholder');
+  });
+  paper.querySelectorAll('.safe-zone,.boundary').forEach((element) => element.remove());
+  paper.querySelectorAll('.selected').forEach((element) => element.classList.remove('selected'));
+  paper.classList.remove('guide-on', 'is-overflow');
+  try {
+    await extensionStorageSet(PRINT_PAYLOAD_KEY, { html: paper.outerHTML, name: activeDirection?.name || '简历' });
+    await chrome.tabs.create({ url: chrome.runtime.getURL('print.html') });
+  } catch (error) {
+    showToast(`打开打印页失败：${error.message}`, 'error');
+  }
 }
 function installEvents() {
   elements.paperContent.addEventListener('keydown', onEditorKeydown);
