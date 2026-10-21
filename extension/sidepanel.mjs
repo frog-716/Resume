@@ -30,6 +30,7 @@ const ICONS = {
   website: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M3 12h18 M12 3c-5 5-5 13 0 18 M12 3c5 5 5 13 0 18',
   github: '<svg class="github-cat" role="img" aria-label="GitHub白猫" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9 7V4.8h6V7m-8.4 0 1 13h8.8l-1-13M10 10.2v6.8m4-6.8v6.8"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24"><path d="M5 19l3-1 9.2-9.2a1.8 1.8 0 0 0-2.5-2.5L5.6 15.4 5 19Z"/><path d="M14.5 6.5l3 3"/></svg>',
 };
 
 let storeState = null;
@@ -53,6 +54,7 @@ let undoLastAt = 0;
 let undoInProgress = false;
 let composing = false;
 let dragState = null;
+let sortHover = null;
 let pendingRenameId = null;
 let toastTimer = null;
 
@@ -387,6 +389,7 @@ function buildPaperContent(target, content, editable) {
 }
 function renderPaper() {
   if (!draft || !activeDirection) return;
+  sortHover = null;
   elements.title.textContent = activeDirection.name;
   document.title = activeDirection.name;
   buildPaperContent(elements.paperContent, draft, true);
@@ -462,16 +465,14 @@ function updateViewScale() {
   const availableWidth = Math.max(220, elements.paperScroller.clientWidth - horizontalPadding - 8);
   const availableHeight = Math.max(220, elements.paperScroller.clientHeight - verticalPadding - 8);
   const fitBase = Math.min(availableWidth / PAPER_WIDTH_PX, availableHeight / PAPER_HEIGHT_PX, 1);
-  const scale = (viewMode === 'fit' ? fitBase : 1) * zoomFactor;
+  const scale = fitBase * zoomFactor;
   currentPaperScale = Math.max(0.25, Math.min(2.5, scale));
   document.documentElement.style.setProperty('--paper-scale', String(currentPaperScale));
   document.documentElement.style.setProperty('--paper-width', `${PAPER_WIDTH_PX}px`);
   document.documentElement.style.setProperty('--paper-height', `${PAPER_HEIGHT_PX}px`);
   elements.paperSpace.style.width = `${PAPER_WIDTH_PX * currentPaperScale}px`;
   elements.paperSpace.style.height = `${(PAPER_HEIGHT_PX + currentOverflowPx) * currentPaperScale}px`;
-  byId('view-page').setAttribute('aria-pressed', String(viewMode === 'fit'));
-  byId('view-actual').setAttribute('aria-pressed', String(viewMode === 'actual'));
-  byId('zoom-readout').textContent = `${Math.round(zoomFactor * 100)}%`;
+  byId('zoom-readout').textContent = zoomFactor === 1 ? '整页' : `${Math.round(currentPaperScale * 100)}%`;
   updateSortHandle();
 }
 function scheduleFit() {
@@ -495,8 +496,12 @@ function updateCurrentSortSelection() {
 }
 function updateSortHandle() {
   const handle = elements.sortHandle;
-  const target = elements.paperContent.querySelector('.sortable.selected');
-  if (!target || (dragState && dragState.moved) || currentView !== 'editor') { handle.hidden = true; return; }
+  // 拖动进行中：保持手柄当前可见/隐藏状态，不被焦点竞态（focusout 触发
+  // 的 updateCurrentSortSelection）中途隐藏，否则 setPointerCapture 目标
+  // 被隐藏会触发 pointercancel，导致拖动在开始前被取消。
+  if (dragState) return;
+  const target = elements.paperContent.querySelector('.sortable.selected') || sortHover;
+  if (!target || currentView !== 'editor') { handle.hidden = true; return; }
   const rect = target.getBoundingClientRect();
   const paperRect = elements.paper.getBoundingClientRect();
   if (!rect.width || !rect.height || rect.bottom < 0 || rect.top > window.innerHeight) { handle.hidden = true; return; }
@@ -618,16 +623,17 @@ function onCompositionEnd(event) { composing = false; const element = event.targ
 function onInput(event) { const element = event.target.closest('[data-edit]'); if (!element || composing) return; updateContentFromElement(element); scheduleFit(); scheduleSave(); }
 function onBeforeInput(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) pushUndo(false); }
 function onFocusIn(event) { if (event.target.closest('[data-edit]')) updateCurrentSortSelection(); }
-function onFocusOut(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) normalizeFieldRuns(element); setTimeout(updateCurrentSortSelection, 0); }
+function onFocusOut(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) normalizeFieldRuns(element); if (!dragState) setTimeout(updateCurrentSortSelection, 0); }
 function installDrag() {
   elements.sortHandle.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
-    const item = elements.paperContent.querySelector('.sortable.selected');
+    const item = elements.paperContent.querySelector('.sortable.selected') || sortHover;
     const list = item?.parentElement;
     if (!item || !list) return;
     event.preventDefault();
     dragState = { item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false };
-    item.classList.add('dragging'); elements.sortHandle.classList.add('is-dragging'); elements.sortHandle.setPointerCapture(event.pointerId);
+    item.classList.add('dragging'); elements.sortHandle.classList.add('is-dragging');
+    try { elements.sortHandle.setPointerCapture(event.pointerId); } catch {}
   });
   document.addEventListener('pointermove', (event) => {
     if (!dragState) return;
@@ -638,6 +644,15 @@ function installDrag() {
     dragState.moved = true; elements.sortHandle.hidden = true;
   });
   document.addEventListener('pointerup', finishDrag); document.addEventListener('pointercancel', finishDrag);
+  // 悬停即显示手柄：Mac 三指拖动是直接手势，不要求先点进字段聚焦。
+  // 这样即便未聚焦，鼠标/触控移到某行时手柄也会在该行左侧出现，可直接起拖。
+  elements.paperContent.addEventListener('mouseover', (event) => {
+    const item = event.target.closest('.sortable');
+    if (item !== sortHover) { sortHover = item; updateSortHandle(); }
+  });
+  elements.paperContent.addEventListener('mouseout', (event) => {
+    if (sortHover && !event.relatedTarget?.closest?.('.sortable')) { sortHover = null; updateSortHandle(); }
+  });
 }
 function finishDrag() {
   if (!dragState) return;
@@ -678,6 +693,7 @@ function renderDirectionCard(direction) {
   const time = document.createElement('div'); time.className = 'card-time'; time.textContent = `最近编辑 ${fmtMinute(direction.currentDraft.updatedAt)}`; info.append(time);
   meta.append(info);
   const actions = document.createElement('div'); actions.className = 'card-actions';
+  const renameButton = document.createElement('button'); renameButton.type = 'button'; renameButton.dataset.renameDirection = direction.id; renameButton.setAttribute('aria-label', '修改方向名称'); renameButton.title = '修改方向名称'; renameButton.innerHTML = ICONS.pencil; actions.append(renameButton);
   const deleteButton = document.createElement('button'); deleteButton.type = 'button'; deleteButton.dataset.deleteDirection = direction.id; deleteButton.setAttribute('aria-label', '删除方向'); deleteButton.title = '删除方向'; deleteButton.innerHTML = ICONS.trash; actions.append(deleteButton); meta.append(actions); article.append(meta);
   const frame = document.createElement('div'); frame.className = 'card-paper-frame'; frame.dataset.openDirection = direction.id; frame.setAttribute('role', 'button'); frame.setAttribute('tabindex', '0'); frame.setAttribute('aria-label', `打开${direction.name}`);
   const mini = document.createElement('div'); mini.className = 'card-paper'; mini.style.setProperty('--body-size', `${Number(direction.currentDraft.layout?.bodyPt || 10.5).toFixed(2)}pt`); const inner = document.createElement('div'); inner.className = 'paper-content'; buildPaperContent(inner, direction.currentDraft.content, false); mini.append(inner); frame.append(mini); article.append(frame); return article;
@@ -754,11 +770,13 @@ async function importDirectionFromFile(file, handle = null) {
   const direction = makeDirection(nameFromWrapper || nameFromContent || '导入的方向', content, DEFAULT_LAYOUT);
   storeState.directions.push(direction);
   resetEditorState(direction);
-  // 记住导入来源：handle 进 IndexedDB（可跨会话重新授权读取），
-  // 元数据随主 store 进 chrome.storage。任一步失败不阻断导入本身。
-  if (handle) { try { await saveImportHandle(handle); } catch (error) { showToast(`已导入，但记住文件来源失败：${error.message}`, 'error'); } }
   storeState.lastImport = { fileName: file.name || handle?.name || '未命名文件', importedAt: nowIso(), directionId: direction.id, persisted: Boolean(handle) };
+  // 先把方向数据落盘（await），再（尽力）记住文件来源句柄。来源写入若被
+  // 关闭侧边栏打断或失败，不阻塞数据持久化，避免“导入后一关侧边栏方向从未
+  // 写盘、重开即丢”的竞态。S-08 此前把 persistStore 排在 saveImportHandle
+  // 之后，正是这一竞态的根因。
   await persistStore();
+  if (handle) { try { await saveImportHandle(handle); } catch (error) { showToast(`已导入，但记住文件来源失败：${error.message}`, 'error'); } }
   elements.importFile.value = '';
   renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
   showToast(`已导入「${direction.name}」，可开始编辑。`, 'success');
@@ -907,20 +925,18 @@ function installEvents() {
   elements.directionForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'create') { event.preventDefault(); createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); } });
   elements.renameForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'rename') { event.preventDefault(); const value = elements.renameName.value; elements.renameDialog.close('renamed'); renameDirection(value).catch((error) => showToast(`改名失败：${error.message}`, 'error')); } });
   elements.confirmForm.addEventListener('submit', (event) => { if (!event.submitter) { event.preventDefault(); elements.confirmDialog.close('cancel'); } });
-  byId('view-page').addEventListener('click', () => { viewMode = 'fit'; zoomFactor = 1; updateViewScale(); });
-  byId('view-actual').addEventListener('click', () => { viewMode = 'actual'; zoomFactor = 1; updateViewScale(); });
   byId('zoom-out').addEventListener('click', () => { zoomFactor = Math.max(0.5, Number((zoomFactor - 0.05).toFixed(2))); updateViewScale(); });
   byId('zoom-in').addEventListener('click', () => { zoomFactor = Math.min(2, Number((zoomFactor + 0.05).toFixed(2))); updateViewScale(); });
-  byId('zoom-readout').addEventListener('click', () => { zoomFactor = 1; viewMode = 'actual'; updateViewScale(); });
+  byId('zoom-readout').addEventListener('click', () => { zoomFactor = 1; updateViewScale(); });
   byId('toggle-guide').addEventListener('click', () => { showGuide = !showGuide; elements.paper.classList.toggle('guide-on', showGuide); byId('toggle-guide').setAttribute('aria-pressed', String(showGuide)); });
   elements.export.addEventListener('click', printPdf);
   window.addEventListener('resize', updateViewScale);
   window.addEventListener('scroll', updateSortHandle, true);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && saveTimer) saveNow().catch(() => {});
+    if (document.visibilityState === 'hidden') saveNow().catch(() => {});
   });
   window.addEventListener('pagehide', () => {
-    if (saveTimer) saveNow().catch(() => {});
+    saveNow().catch(() => {});
   });
   window.addEventListener('keydown', async (event) => {
     const key = event.key.toLowerCase();
