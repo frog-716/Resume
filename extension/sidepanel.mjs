@@ -1,0 +1,809 @@
+import { fitResumeLayout } from './domain-auto-layout.mjs';
+import { createEmptyResumeContent, validateResumeContent } from './domain-resume-content.mjs';
+import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
+
+const PAPER_WIDTH_PX = 793.7;
+const PAPER_HEIGHT_PX = 1122.5;
+const STORE_KEY = 'resume-sidepanel-store-v1';
+const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
+const SECTION_LABELS = { skills: '专业技能', work: '工作经历', projects: '项目经历', education: '教育背景' };
+const COLUMN_PLACEHOLDERS = ['单位 / 项目', '岗位 / 职责', '日期'];
+
+const byId = (id) => document.getElementById(id);
+const elements = {
+  title: byId('resume-title'), saveStatus: byId('save-status'), editor: byId('editor-view'),
+  paperScroller: byId('paper-scroller'), paperSpace: byId('paper-space'), paper: byId('resume-paper'),
+  paperContent: byId('paper-content'), directionView: byId('direction-view'), directionSearch: byId('direction-search'),
+  directionGrid: byId('direction-grid'), directionDialog: byId('direction-dialog'), directionForm: byId('direction-form'),
+  directionName: byId('direction-name'), directionTemplate: byId('direction-template'), renameDialog: byId('rename-dialog'),
+  renameForm: byId('rename-form'), renameName: byId('rename-name'), confirmDialog: byId('confirm-dialog'),
+  confirmForm: byId('confirm-form'), confirmTitle: byId('confirm-title'), confirmMessage: byId('confirm-message'),
+  confirmAction: byId('confirm-action'), toast: byId('toast'), export: byId('export-pdf'), sortHandle: byId('sort-handle'),
+};
+
+const ICONS = {
+  phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92Z',
+  email: 'M3 5.5h18v13H3z M3.5 6.2 12 12.5l8.5-6.3',
+  wechat: 'M8.5 6.2c-3.1 0-5.7 2-5.7 4.6 0 1.5.8 2.8 2.2 3.7l-.6 2 2.3-1.2c.6.2 1.2.3 1.8.3h.5c-.1-.4-.2-.8-.2-1.2 0-2.7 2.7-4.9 6-4.9h.5c-.2-1.9-2.3-3.3-4.8-3.3H8.5Zm6.6 4.7c-2.5 0-4.6 1.5-4.6 3.4s2.1 3.4 4.6 3.4c.5 0 1-.1 1.5-.2l1.8.9-.5-1.5c1.1-.6 1.8-1.5 1.8-2.6 0-1.9-2.1-3.4-4.6-3.4Z',
+  website: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M3 12h18 M12 3c-5 5-5 13 0 18 M12 3c5 5 5 13 0 18',
+  github: '<svg class="github-cat" role="img" aria-label="GitHub" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>',
+  trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9 7V4.8h6V7m-8.4 0 1 13h8.8l-1-13M10 10.2v6.8m4-6.8v6.8"/></svg>',
+};
+
+let storeState = null;
+let activeDirection = null;
+let draft = null;
+let layout = null;
+let currentView = 'editor';
+let viewMode = 'fit';
+let zoomFactor = 1;
+let showGuide = true;
+let currentPaperScale = 1;
+let currentOverflowPx = 0;
+let exportBlockedReason = '';
+let fitFrame = 0;
+let saveTimer = null;
+let saveInFlight = null;
+let draftRevision = 0;
+let savedRevision = 0;
+let undoStack = [];
+let undoLastAt = 0;
+let undoInProgress = false;
+let composing = false;
+let dragState = null;
+let pendingRenameId = null;
+let toastTimer = null;
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function uid(prefix = 'item') {
+  const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${id}`;
+}
+function nowIso() { return new Date().toISOString(); }
+function escapeHtml(value) {
+  return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+function setStatus(text, state = '') {
+  elements.saveStatus.textContent = text;
+  elements.saveStatus.dataset.state = state;
+}
+function showToast(message, kind = '', retry) {
+  clearTimeout(toastTimer);
+  elements.toast.replaceChildren();
+  elements.toast.dataset.kind = kind;
+  const text = document.createElement('span');
+  text.textContent = message;
+  elements.toast.append(text);
+  if (typeof retry === 'function') {
+    const button = document.createElement('button');
+    button.className = 'toast-retry';
+    button.type = 'button';
+    button.textContent = '重试';
+    button.addEventListener('click', () => { elements.toast.classList.add('hidden'); retry(); });
+    elements.toast.append(button);
+  }
+  elements.toast.classList.remove('hidden');
+  toastTimer = setTimeout(() => elements.toast.classList.add('hidden'), retry ? 10000 : 3800);
+}
+function fmtMinute(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
+}
+function makeDirection(name, content = createEmptyResumeContent(), currentLayout = DEFAULT_LAYOUT) {
+  const createdAt = nowIso();
+  return {
+    id: uid('direction'),
+    name: String(name || '我的简历').trim() || '我的简历',
+    createdAt,
+    currentDraft: { content: clone(content), layout: clone(currentLayout), updatedAt: createdAt },
+  };
+}
+function initialState() {
+  const direction = makeDirection('我的简历');
+  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
+}
+function extensionStorageGet(key) {
+  if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.get(key, (value) => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(value[key])));
+  return Promise.resolve(localStorage.getItem(key) ? JSON.parse(localStorage.getItem(key)) : undefined);
+}
+function extensionStorageSet(key, value) {
+  if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.set({ [key]: value }, () => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve()));
+  localStorage.setItem(key, JSON.stringify(value));
+  return Promise.resolve();
+}
+async function loadStore() {
+  const saved = await extensionStorageGet(STORE_KEY);
+  if (!saved || saved.schemaVersion !== 1 || !Array.isArray(saved.directions) || !saved.directions.length) {
+    storeState = initialState();
+    await extensionStorageSet(STORE_KEY, clone(storeState));
+    return;
+  }
+  const validDirections = saved.directions.filter((direction) => direction && direction.id && direction.name && direction.currentDraft && validateResumeContent(direction.currentDraft.content).valid);
+  storeState = validDirections.length ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions: validDirections } : initialState();
+  if (!storeState.directions.some((item) => item.id === storeState.lastOpenedDirectionId)) storeState.lastOpenedDirectionId = storeState.directions[0].id;
+}
+async function persistStore(snapshot = storeState) {
+  await extensionStorageSet(STORE_KEY, clone(snapshot));
+}
+function findDirection(id) { return storeState?.directions.find((direction) => direction.id === id) || null; }
+function resetEditorState(direction) {
+  activeDirection = direction;
+  draft = clone(direction.currentDraft.content);
+  layout = clone(direction.currentDraft.layout || DEFAULT_LAYOUT);
+  undoStack = [];
+  undoLastAt = 0;
+  draftRevision = 0;
+  savedRevision = 0;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  saveInFlight = null;
+  storeState.lastOpenedDirectionId = direction.id;
+}
+function captureDraft() {
+  if (!activeDirection || !draft) return;
+  activeDirection.currentDraft = { content: clone(draft), layout: clone(layout || DEFAULT_LAYOUT), updatedAt: activeDirection.currentDraft.updatedAt || nowIso() };
+}
+function scheduleSave() {
+  if (!activeDirection || !draft) return;
+  draftRevision += 1;
+  clearTimeout(saveTimer);
+  setStatus('正在保存…', 'saving');
+  saveTimer = setTimeout(() => { saveNow().catch(() => {}); }, 360);
+}
+async function saveNow() {
+  if (!activeDirection || !draft) return false;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  if (saveInFlight) {
+    await saveInFlight;
+    if (savedRevision < draftRevision) return saveNow();
+    return true;
+  }
+  const directionId = activeDirection.id;
+  const revision = draftRevision;
+  const nextDraft = { content: clone(draft), layout: clone(layout || DEFAULT_LAYOUT), updatedAt: nowIso() };
+  activeDirection.currentDraft = nextDraft;
+  storeState.lastOpenedDirectionId = directionId;
+  const snapshot = clone(storeState);
+  setStatus('正在保存…', 'saving');
+  saveInFlight = persistStore(snapshot).then(() => {
+    savedRevision = Math.max(savedRevision, revision);
+    if (activeDirection?.id === directionId) activeDirection.currentDraft.updatedAt = nextDraft.updatedAt;
+    setStatus('已保存', 'saved');
+    return true;
+  }).catch((error) => {
+    setStatus('保存失败', 'error');
+    showToast(`保存失败，内容仍在当前页面。原因：${error.message}`, 'error', () => saveNow());
+    return false;
+  }).finally(() => { saveInFlight = null; });
+  const ok = await saveInFlight;
+  if (ok && savedRevision < draftRevision) return saveNow();
+  return ok;
+}
+function pushUndo(force = false) {
+  if (!activeDirection || !draft) return;
+  const now = Date.now();
+  if (!force && now - undoLastAt < 850) { undoLastAt = now; return; }
+  undoStack.push({ directionId: activeDirection.id, content: clone(draft), layout: clone(layout), name: activeDirection.name });
+  if (undoStack.length > 180) undoStack.shift();
+  undoLastAt = now;
+}
+async function undo() {
+  if (undoInProgress || !undoStack.length || !activeDirection) return;
+  undoInProgress = true;
+  try {
+    const previous = undoStack[undoStack.length - 1];
+    if (previous.directionId !== activeDirection.id) return;
+    undoStack.pop();
+    draft = clone(previous.content);
+    layout = clone(previous.layout);
+    activeDirection.name = previous.name;
+    elements.title.textContent = previous.name;
+    renderPaper();
+    scheduleFit();
+    scheduleSave();
+    setStatus('已撤销，正在保存…', 'saving');
+  } finally { undoInProgress = false; }
+}
+function safeFragment(html) {
+  const source = document.createElement('template');
+  source.innerHTML = String(html || '');
+  const out = document.createElement('template');
+  function copyNode(node, parent) {
+    if (node.nodeType === Node.TEXT_NODE) { parent.append(document.createTextNode(node.nodeValue || '')); return; }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') { parent.append(document.createElement('br')); return; }
+    if (tag === 'b' || tag === 'strong') {
+      const safe = document.createElement(tag);
+      Array.from(node.childNodes).forEach((child) => copyNode(child, safe));
+      parent.append(safe);
+      return;
+    }
+    Array.from(node.childNodes).forEach((child) => copyNode(child, parent));
+  }
+  Array.from(source.content.childNodes).forEach((node) => copyNode(node, out.content));
+  return out.innerHTML;
+}
+function plainTextFromHtml(html) {
+  const node = document.createElement('div');
+  node.innerHTML = safeFragment(html);
+  return node.innerText || node.textContent || '';
+}
+function serializeEditable(element) {
+  function serialize(node) {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.nodeValue || '');
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') return '<br>';
+    const inner = Array.from(node.childNodes).map(serialize).join('');
+    if (tag === 'b' || tag === 'strong') return `<${tag}>${inner}</${tag}>`;
+    if (tag === 'div' || tag === 'p') return `${inner}<br>`;
+    return inner;
+  }
+  return Array.from(element.childNodes).map(serialize).join('').replace(/(?:<br>)+$/i, '');
+}
+function makeEditable(html, editKey, label, extraClass = '', align, placeholder) {
+  const span = document.createElement('span');
+  span.className = extraClass;
+  span.innerHTML = safeFragment(html);
+  if (align) span.style.textAlign = align;
+  if (placeholder) span.dataset.placeholder = placeholder;
+  span.contentEditable = 'true';
+  span.spellcheck = false;
+  span.dataset.edit = editKey;
+  span.setAttribute('aria-label', label || '简历文字');
+  applyRunsToElement(span);
+  return span;
+}
+function textSpan(value, align) {
+  const span = document.createElement('span');
+  span.innerHTML = safeFragment(value);
+  if (align) span.style.textAlign = align;
+  applyRunsToElement(span);
+  return span;
+}
+function contactIconSvg(kind, label) {
+  return `<svg viewBox="0 0 24 24" role="img" aria-label="${label}"><path d="${ICONS[kind]}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${kind === 'wechat' ? ' transform="translate(-2.4 -2.4) scale(1.2)"' : ''}></path></svg>`;
+}
+function createBullet(item, sectionType, editable) {
+  const li = document.createElement('li');
+  li.className = 'bullet sortable';
+  li.dataset.itemId = item.id;
+  li.dataset.sortKind = 'bullet';
+  li.dataset.section = sectionType;
+  if (item.align) li.style.textAlign = item.align;
+  li.append(editable ? makeEditable(item.html, `bullet|${sectionType}|${item.id}`, '要点', '', item.align, '要点') : textSpan(item.html, item.align));
+  return li;
+}
+function createBulletList(items, sectionType, editable) {
+  const ul = document.createElement('ul');
+  ul.className = 'bullet-list';
+  for (const item of items || []) ul.append(createBullet(item, sectionType, editable));
+  return ul;
+}
+function createExperience(entry, sectionType, editable) {
+  const block = document.createElement('article');
+  block.className = `experience sortable${entry.bullets?.length ? ' has-bullets' : ''}`;
+  block.dataset.itemId = entry.id;
+  block.dataset.sortKind = 'experience';
+  block.dataset.section = sectionType;
+  const head = document.createElement('div');
+  head.className = 'experience-head';
+  entry.columns.forEach((column, index) => {
+    const placeholder = sectionType === 'education' ? '' : COLUMN_PLACEHOLDERS[index];
+    head.append(editable
+      ? makeEditable(column.html, `column|${sectionType}|${entry.id}|${index}`, `条目第${index + 1}栏`, 'entry-field', column.align, placeholder)
+      : textSpan(column.html, column.align));
+  });
+  block.append(head);
+  if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable));
+  return block;
+}
+function createSection(contentSection, editable, isFirst) {
+  const section = document.createElement('section');
+  section.className = `resume-section${isFirst ? ' first-section' : ''}`;
+  section.dataset.type = contentSection.type;
+  const heading = document.createElement('h2');
+  heading.className = 'section-heading';
+  const label = editable
+    ? makeEditable(contentSection.title.html, `title|${contentSection.type}`, '分区标题', 'section-label', contentSection.title.align)
+    : textSpan(contentSection.title.html, contentSection.title.align);
+  label.classList.add('section-label');
+  heading.append(label);
+  section.append(heading);
+  const body = document.createElement('div');
+  body.className = 'section-body';
+  if (contentSection.type === 'skills') body.append(createBulletList(contentSection.bullets, 'skills', editable));
+  else if (contentSection.type === 'education') {
+    const row = document.createElement('div');
+    row.className = 'experience-head education-head';
+    contentSection.columns.forEach((column, index) => row.append(editable
+      ? makeEditable(column.html, `column|education||${index}`, `教育信息第${index + 1}栏`, 'entry-field', column.align)
+      : textSpan(column.html, column.align)));
+    body.append(row, createBulletList(contentSection.bullets, 'education', editable));
+  } else for (const entry of contentSection.entries || []) body.append(createExperience(entry, contentSection.type, editable));
+  section.append(body);
+  return section;
+}
+function createIdentity(identity, editable) {
+  const wrapper = document.createElement('header');
+  wrapper.className = 'identity';
+  const name = editable ? makeEditable(identity.name.html, 'name', '姓名', 'person-name', identity.name.align) : textSpan(identity.name.html, identity.name.align);
+  name.classList.add('person-name');
+  wrapper.append(name);
+  const contactRow = document.createElement('div');
+  contactRow.className = 'contact-row';
+  [['phone', '电话'], ['email', '邮箱'], ['wechat', '微信']].forEach(([type, label], index) => {
+    if (index) { const separator = document.createElement('span'); separator.className = 'contact-separator'; separator.textContent = '｜'; contactRow.append(separator); }
+    const item = document.createElement('span'); item.className = 'contact-item';
+    const icon = document.createElement('span'); icon.className = 'contact-icon'; icon.innerHTML = contactIconSvg(type, label); item.append(icon);
+    const value = identity.contacts[type];
+    item.append(editable ? makeEditable(value.html, `contact|${type}`, label, '', value.align) : textSpan(value.html, value.align));
+    contactRow.append(item);
+  });
+  wrapper.append(contactRow);
+  const linksRow = document.createElement('div');
+  linksRow.className = 'contact-row contact-links';
+  const links = identity.links || {};
+  [['github', links.github], ['personalWebsite', links.personalWebsite]].forEach(([type, link]) => {
+    if (!link) return;
+    if (linksRow.childNodes.length) { const separator = document.createElement('span'); separator.className = 'contact-separator'; separator.textContent = '｜'; linksRow.append(separator); }
+    const item = document.createElement('span'); item.className = 'link-item';
+    const icon = document.createElement('span');
+    if (type === 'github') { icon.className = 'github-icon'; icon.innerHTML = ICONS.github; }
+    else { icon.className = 'contact-icon'; icon.innerHTML = contactIconSvg('website', '个人网站'); }
+    item.append(icon);
+    const anchor = document.createElement('a');
+    anchor.href = link.href; anchor.innerHTML = runsHtml(link.href); anchor.style.textAlign = link.align || '';
+    if (editable) { anchor.contentEditable = 'true'; anchor.spellcheck = false; anchor.dataset.edit = type === 'github' ? 'githubHref' : 'websiteHref'; anchor.setAttribute('aria-label', type === 'github' ? 'GitHub 链接' : '个人网页链接'); }
+    item.append(anchor); linksRow.append(item);
+  });
+  if (linksRow.childNodes.length) wrapper.append(linksRow);
+  if (editable) {
+    const addMenu = document.createElement('div');
+    addMenu.className = 'contact-add-menu';
+    for (const type of ['github', 'personalWebsite']) {
+      if (links[type]) continue;
+      const button = document.createElement('button');
+      button.type = 'button'; button.dataset.addLink = type; button.textContent = type === 'github' ? '＋ GitHub' : '＋ 个人网页'; addMenu.append(button);
+    }
+    if (addMenu.childNodes.length) wrapper.append(addMenu);
+  }
+  return wrapper;
+}
+function buildPaperContent(target, content, editable) {
+  const flow = document.createElement('div');
+  flow.className = 'resume-flow';
+  flow.append(createIdentity(content.identity, editable));
+  content.sections.forEach((section, index) => flow.append(createSection(section, editable, index === 0)));
+  target.replaceChildren(flow);
+}
+function renderPaper() {
+  if (!draft || !activeDirection) return;
+  elements.title.textContent = activeDirection.name;
+  document.title = activeDirection.name;
+  buildPaperContent(elements.paperContent, draft, true);
+  elements.paper.classList.toggle('guide-on', showGuide);
+  updateCurrentSortSelection();
+}
+function pathToValue(key) {
+  const [kind, a, b, c] = key.split('|');
+  if (kind === 'name') return draft.identity.name;
+  if (kind === 'contact') return draft.identity.contacts[a];
+  if (kind === 'title') return draft.sections.find((section) => section.type === a)?.title;
+  if (kind === 'githubHref' || kind === 'websiteHref') return draft.identity.links[kind === 'githubHref' ? 'github' : 'personalWebsite'];
+  if (kind === 'bullet') {
+    if (a === 'skills') return draft.sections[0].bullets.find((item) => item.id === b);
+    const section = draft.sections.find((item) => item.type === a);
+    if (a === 'education') return section?.bullets.find((item) => item.id === b);
+    const entry = section?.entries.find((item) => item.id === b);
+    return entry?.bullets.find((item) => item.id === c);
+  }
+  if (kind === 'column' && a === 'education') return draft.sections.find((item) => item.type === 'education')?.columns[Number(c)];
+  if (kind === 'column') return draft.sections.find((item) => item.type === a)?.entries.find((item) => item.id === b)?.columns[Number(c)];
+  return null;
+}
+function updateContentFromElement(element) {
+  const key = element.dataset.edit;
+  if (!key) return;
+  const value = pathToValue(key);
+  if (!value) return;
+  if (key === 'githubHref' || key === 'websiteHref') value.href = (element.innerText || '').trim();
+  else if (Object.hasOwn(value, 'html')) value.html = serializeEditable(element);
+  if (element.style.textAlign && Object.hasOwn(value, 'align')) value.align = element.style.textAlign;
+}
+function applySpacing(bodyPt, slack, spacing) {
+  const style = elements.paper.style;
+  style.setProperty('--body-size', `${bodyPt.toFixed(2)}pt`);
+  style.setProperty('--body-line', `${spacing.bodyLineHeightPt.toFixed(4)}pt`);
+  style.setProperty('--entry-line', `${spacing.threeColumnTitleLineHeightPt.toFixed(4)}pt`);
+  style.setProperty('--bullet-gap', `${spacing.sameGroupBulletGapPt.toFixed(4)}pt`);
+  style.setProperty('--section-gap', `${spacing.sectionBeforeGapPt.toFixed(4)}pt`);
+  style.setProperty('--title-bullet-gap', `${spacing.largeTitleToFirstBulletGapPt.toFixed(4)}pt`);
+  style.setProperty('--title-entry-gap', `${spacing.largeTitleToFirstThreeColumnGapPt.toFixed(4)}pt`);
+  style.setProperty('--exp-gap', `${spacing.previousExperienceBulletToNextThreeColumnGapPt.toFixed(4)}pt`);
+  style.setProperty('--entry-bullet-gap', `${spacing.threeColumnToFirstBulletGapPt.toFixed(4)}pt`);
+  layout = { ...(layout || DEFAULT_LAYOUT), bodyPt, slack, marginsMm: { ...DEFAULT_LAYOUT.marginsMm } };
+}
+function applyAutoFit() {
+  if (!draft || !elements.paperContent.querySelector('.resume-flow')) return;
+  const flow = elements.paperContent.querySelector('.resume-flow');
+  const available = elements.paperContent.clientHeight;
+  const fit = fitResumeLayout({
+    availableHeightPx: available,
+    measureContentHeightPx: ({ bodyPt, slack, spacing }) => {
+      applySpacing(bodyPt, slack, spacing);
+      return flow.getBoundingClientRect().height / Math.max(currentPaperScale, 0.01);
+    },
+  });
+  applySpacing(fit.bodyPt, fit.slack, fit.spacing);
+  elements.paper.classList.toggle('is-overflow', !fit.fits);
+  currentOverflowPx = fit.fits ? 0 : fit.overflowPx;
+  const contactRows = Array.from(elements.paperContent.querySelectorAll('.contact-row'));
+  contactRows.forEach((row) => row.classList.toggle('overflow', row.scrollWidth > row.clientWidth + 1));
+  const contactConflict = contactRows.some((row) => row.classList.contains('overflow'));
+  exportBlockedReason = !fit.fits ? '当前内容在最小字号下仍超过一页，请删减文字后再打印。' : contactConflict ? '联系方式超过固定两行的宽度，请修改联系方式。' : '';
+  elements.export.disabled = Boolean(exportBlockedReason);
+  elements.export.title = exportBlockedReason;
+  updateViewScale();
+  updateSortHandle();
+}
+function updateViewScale() {
+  const style = getComputedStyle(elements.paperScroller);
+  const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+  const availableWidth = Math.max(220, elements.paperScroller.clientWidth - horizontalPadding - 8);
+  const availableHeight = Math.max(220, elements.paperScroller.clientHeight - verticalPadding - 8);
+  const fitBase = Math.min(availableWidth / PAPER_WIDTH_PX, availableHeight / PAPER_HEIGHT_PX, 1);
+  const scale = (viewMode === 'fit' ? fitBase : 1) * zoomFactor;
+  currentPaperScale = Math.max(0.25, Math.min(2.5, scale));
+  document.documentElement.style.setProperty('--paper-scale', String(currentPaperScale));
+  document.documentElement.style.setProperty('--paper-width', `${PAPER_WIDTH_PX}px`);
+  document.documentElement.style.setProperty('--paper-height', `${PAPER_HEIGHT_PX}px`);
+  elements.paperSpace.style.width = `${PAPER_WIDTH_PX * currentPaperScale}px`;
+  elements.paperSpace.style.height = `${(PAPER_HEIGHT_PX + currentOverflowPx) * currentPaperScale}px`;
+  byId('view-page').setAttribute('aria-pressed', String(viewMode === 'fit'));
+  byId('view-actual').setAttribute('aria-pressed', String(viewMode === 'actual'));
+  byId('zoom-readout').textContent = `${Math.round(zoomFactor * 100)}%`;
+  updateSortHandle();
+}
+function scheduleFit() {
+  if (fitFrame) cancelAnimationFrame(fitFrame);
+  fitFrame = requestAnimationFrame(() => { fitFrame = 0; applyAutoFit(); });
+}
+function updateCurrentSortSelection() {
+  elements.paperContent.querySelectorAll('.sortable').forEach((item) => item.classList.remove('selected'));
+  const active = document.activeElement;
+  if (active?.dataset?.edit) {
+    const parts = active.dataset.edit.split('|');
+    if (parts[0] === 'bullet') {
+      const item = elements.paperContent.querySelector(`.bullet[data-item-id="${CSS.escape(parts[2])}"]`);
+      item?.classList.add('selected');
+    } else if (parts[0] === 'column') {
+      const item = elements.paperContent.querySelector(`.experience[data-item-id="${CSS.escape(parts[2])}"]`);
+      item?.classList.add('selected');
+    }
+  }
+  updateSortHandle();
+}
+function updateSortHandle() {
+  const handle = elements.sortHandle;
+  const target = elements.paperContent.querySelector('.sortable.selected');
+  if (!target || (dragState && dragState.moved) || currentView !== 'editor') { handle.hidden = true; return; }
+  const rect = target.getBoundingClientRect();
+  const paperRect = elements.paper.getBoundingClientRect();
+  if (!rect.width || !rect.height || rect.bottom < 0 || rect.top > window.innerHeight) { handle.hidden = true; return; }
+  handle.style.left = `${Math.max(2, paperRect.left + 1)}px`;
+  handle.style.top = `${Math.max(2, Math.min(window.innerHeight - 34, rect.top + (rect.height - 32) / 2))}px`;
+  handle.hidden = false;
+}
+function focusEditable(element, selectAll = false) {
+  if (!element) return;
+  element.focus();
+  if (selectAll) {
+    const range = document.createRange(); range.selectNodeContents(element);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  }
+}
+function findBulletList(sectionType, bulletId) {
+  if (sectionType === 'skills') return draft.sections[0].bullets;
+  if (sectionType === 'education') return draft.sections.find((section) => section.type === 'education').bullets;
+  const section = draft.sections.find((item) => item.type === sectionType);
+  for (const entry of section?.entries || []) if (entry.bullets.some((item) => item.id === bulletId)) return entry.bullets;
+  return null;
+}
+function addBulletAfter(element, initialHtml = '') {
+  const [kind, sectionType, bulletId] = element.dataset.edit.split('|');
+  if (kind !== 'bullet') return;
+  const list = findBulletList(sectionType, bulletId);
+  if (!list) return;
+  pushUndo(true);
+  const item = { id: uid(`${sectionType}-bullet`), html: initialHtml };
+  list.splice(Math.max(0, list.findIndex((entry) => entry.id === bulletId) + 1), 0, item);
+  renderPaper(); scheduleFit(); scheduleSave();
+  focusEditable(elements.paperContent.querySelector(`[data-edit="bullet|${CSS.escape(sectionType)}|${CSS.escape(item.id)}"]`));
+}
+function addExperienceAfter(sectionType, entryId) {
+  const section = draft.sections.find((item) => item.type === sectionType);
+  if (!section || !['work', 'projects'].includes(sectionType)) return;
+  pushUndo(true);
+  const item = { id: uid(`${sectionType}-entry`), columns: [{ html: '' }, { html: '' }, { html: '' }], bullets: [] };
+  section.entries.splice(Math.max(0, section.entries.findIndex((entry) => entry.id === entryId) + 1), 0, item);
+  renderPaper(); scheduleFit(); scheduleSave();
+  focusEditable(elements.paperContent.querySelector(`[data-edit="column|${CSS.escape(sectionType)}|${CSS.escape(item.id)}|0"]`));
+}
+function removeBullet(element) {
+  const [, sectionType, bulletId] = element.dataset.edit.split('|');
+  const list = findBulletList(sectionType, bulletId);
+  const index = list?.findIndex((item) => item.id === bulletId) ?? -1;
+  if (index < 0) return;
+  pushUndo(true); list.splice(index, 1); renderPaper(); scheduleFit(); scheduleSave();
+}
+function removeExperience(sectionType, entryId) {
+  const section = draft.sections.find((item) => item.type === sectionType);
+  const index = section?.entries.findIndex((item) => item.id === entryId) ?? -1;
+  if (index < 0) return;
+  pushUndo(true); section.entries.splice(index, 1); renderPaper(); scheduleFit(); scheduleSave();
+}
+function addLink(type) {
+  pushUndo(true);
+  draft.identity.links[type] = { type, href: '', label: { html: type === 'github' ? 'GitHub' : '个人网页' } };
+  renderPaper(); scheduleFit(); scheduleSave();
+  focusEditable(elements.paperContent.querySelector(`[data-edit="${type === 'github' ? 'githubHref' : 'websiteHref'}"]`), true);
+}
+function removeLink(type) {
+  pushUndo(true); draft.identity.links[type] = null; renderPaper(); scheduleFit(); scheduleSave();
+}
+function setFieldAlignment(element, alignment) {
+  const value = pathToValue(element.dataset.edit);
+  const target = element.closest('.bullet') || element;
+  if (getComputedStyle(target).textAlign === alignment) return;
+  pushUndo(true); target.style.textAlign = alignment; element.style.textAlign = alignment;
+  if (value) value.align = alignment;
+  scheduleFit(); scheduleSave();
+}
+function onEditorKeydown(event) {
+  const element = event.target.closest('[data-edit]');
+  if (!element || !elements.paperContent.contains(element)) return;
+  const parts = element.dataset.edit.split('|');
+  const kind = parts[0];
+  if (event.metaKey && ['i', 'u'].includes(event.key.toLowerCase())) { event.preventDefault(); return; }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (kind === 'bullet' && event.shiftKey) { document.execCommand('insertLineBreak'); return; }
+    if (kind === 'bullet') { addBulletAfter(element); return; }
+    if (kind === 'column' && ['work', 'projects'].includes(parts[1])) { addExperienceAfter(parts[1], parts[2]); return; }
+    element.blur(); return;
+  }
+  if ((event.key === 'Backspace' || event.key === 'Delete') && kind === 'bullet' && !plainTextFromHtml(serializeEditable(element)).trim()) { event.preventDefault(); removeBullet(element); return; }
+  if ((event.key === 'Backspace' || event.key === 'Delete') && kind === 'column' && ['work', 'projects'].includes(parts[1]) && !plainTextFromHtml(serializeEditable(element)).trim()) { event.preventDefault(); removeExperience(parts[1], parts[2]); return; }
+  if ((event.key === 'Backspace' || event.key === 'Delete') && ['githubHref', 'websiteHref'].includes(kind) && !element.innerText.trim()) { event.preventDefault(); removeLink(kind === 'githubHref' ? 'github' : 'personalWebsite'); return; }
+  if (event.metaKey && event.key.toLowerCase() === 'a') { event.preventDefault(); focusEditable(element, true); return; }
+  if (event.metaKey && !event.shiftKey && event.key === 'ArrowLeft') { event.preventDefault(); setFieldAlignment(element, 'left'); }
+  if (event.metaKey && !event.shiftKey && event.key === 'ArrowRight') { event.preventDefault(); setFieldAlignment(element, 'right'); }
+  if (event.metaKey && !event.shiftKey && event.key === 'ArrowDown') { event.preventDefault(); setFieldAlignment(element, 'center'); }
+  if (event.metaKey && event.key.toLowerCase() === 'b' && kind === 'bullet') { event.preventDefault(); document.execCommand('bold'); updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); }
+}
+function onPaste(event) {
+  const element = event.target.closest('[data-edit]');
+  if (!element || !elements.paperContent.contains(element)) return;
+  event.preventDefault();
+  const raw = event.clipboardData.getData('text/plain') || event.clipboardData.getData('text/html').replace(/<br\s*\/?\s*>|<\/(p|div|li)>/gi, '\n').replace(/<[^>]*>/g, '');
+  const parts = element.dataset.edit.split('|');
+  if (parts[0] === 'bullet') {
+    const lines = raw.replace(/\r/g, '').split('\n');
+    const first = lines.shift() || '';
+    document.execCommand('insertText', false, first);
+    updateContentFromElement(element);
+    let previousId = parts[2];
+    for (const line of lines) {
+      const list = findBulletList(parts[1], previousId);
+      const item = { id: uid(`${parts[1]}-bullet`), html: escapeHtml(line) };
+      list.splice(Math.max(0, list.findIndex((entry) => entry.id === previousId) + 1), 0, item);
+      previousId = item.id;
+    }
+    if (lines.length) renderPaper();
+  } else { document.execCommand('insertText', false, raw.replace(/\r?\n/g, ' ')); updateContentFromElement(element); }
+  normalizeFieldRuns(element); scheduleFit(); scheduleSave();
+}
+function onCompositionStart() { composing = true; }
+function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); } }
+function onInput(event) { const element = event.target.closest('[data-edit]'); if (!element || composing) return; updateContentFromElement(element); scheduleFit(); scheduleSave(); }
+function onBeforeInput(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) pushUndo(false); }
+function onFocusIn(event) { if (event.target.closest('[data-edit]')) updateCurrentSortSelection(); }
+function onFocusOut(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) normalizeFieldRuns(element); setTimeout(updateCurrentSortSelection, 0); }
+function installDrag() {
+  elements.sortHandle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    const item = elements.paperContent.querySelector('.sortable.selected');
+    const list = item?.parentElement;
+    if (!item || !list) return;
+    event.preventDefault();
+    dragState = { item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false };
+    item.classList.add('dragging'); elements.sortHandle.classList.add('is-dragging'); elements.sortHandle.setPointerCapture(event.pointerId);
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (!dragState) return;
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.sortable');
+    if (!target || target === dragState.item || target.parentElement !== dragState.list || target.dataset.sortKind !== dragState.kind) return;
+    const rect = target.getBoundingClientRect();
+    dragState.list.insertBefore(dragState.item, event.clientY > rect.top + rect.height / 2 ? target.nextSibling : target);
+    dragState.moved = true; elements.sortHandle.hidden = true;
+  });
+  document.addEventListener('pointerup', finishDrag); document.addEventListener('pointercancel', finishDrag);
+}
+function finishDrag() {
+  if (!dragState) return;
+  const state = dragState; dragState = null; elements.sortHandle.classList.remove('is-dragging'); state.item.classList.remove('dragging');
+  if (!state.moved) { updateSortHandle(); return; }
+  pushUndo(true);
+  const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
+  if (state.kind === 'experience') {
+    const section = draft.sections.find((item) => item.type === state.section);
+    const map = new Map(section.entries.map((item) => [item.id, item])); section.entries = ids.map((id) => map.get(id)).filter(Boolean);
+  } else {
+    const list = findBulletList(state.section, ids[0]); const map = new Map(list.map((item) => [item.id, item]));
+    const sorted = ids.map((id) => map.get(id)).filter(Boolean); list.splice(0, list.length, ...sorted);
+  }
+  renderPaper(); scheduleFit(); scheduleSave();
+}
+function setView(view) {
+  currentView = view;
+  elements.editor.classList.toggle('hidden', view !== 'editor');
+  elements.directionView.classList.toggle('hidden', view !== 'directions');
+  if (view !== 'editor') elements.sortHandle.hidden = true;
+  if (view === 'directions') { renderDirections(); setTimeout(() => elements.directionSearch.focus(), 40); }
+  else updateSortHandle();
+}
+function renderDirections() {
+  const query = elements.directionSearch.value.trim().toLowerCase();
+  const directions = storeState.directions.filter((direction) => !query || direction.name.toLowerCase().includes(query));
+  elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
+  updateCardScales();
+}
+function renderDirectionCard(direction) {
+  const article = document.createElement('article'); article.className = 'library-card direction-card'; article.dataset.directionId = direction.id;
+  const meta = document.createElement('div'); meta.className = 'card-meta';
+  const info = document.createElement('div'); info.className = 'card-info';
+  const kind = document.createElement('span'); kind.className = 'card-kind'; kind.textContent = direction.id === activeDirection?.id ? '当前方向' : '简历方向'; info.append(kind);
+  const title = document.createElement('button'); title.type = 'button'; title.className = 'card-name'; title.textContent = direction.name; title.dataset.renameDirection = direction.id; title.title = '点击修改方向名称'; info.append(title);
+  const time = document.createElement('div'); time.className = 'card-time'; time.textContent = `最近编辑 ${fmtMinute(direction.currentDraft.updatedAt)}`; info.append(time);
+  meta.append(info);
+  const actions = document.createElement('div'); actions.className = 'card-actions';
+  const deleteButton = document.createElement('button'); deleteButton.type = 'button'; deleteButton.dataset.deleteDirection = direction.id; deleteButton.setAttribute('aria-label', '删除方向'); deleteButton.title = '删除方向'; deleteButton.innerHTML = ICONS.trash; actions.append(deleteButton); meta.append(actions); article.append(meta);
+  const frame = document.createElement('div'); frame.className = 'card-paper-frame'; frame.dataset.openDirection = direction.id; frame.setAttribute('role', 'button'); frame.setAttribute('tabindex', '0'); frame.setAttribute('aria-label', `打开${direction.name}`);
+  const mini = document.createElement('div'); mini.className = 'card-paper'; mini.style.setProperty('--body-size', `${Number(direction.currentDraft.layout?.bodyPt || 10.5).toFixed(2)}pt`); const inner = document.createElement('div'); inner.className = 'paper-content'; buildPaperContent(inner, direction.currentDraft.content, false); mini.append(inner); frame.append(mini); article.append(frame); return article;
+}
+function updateCardScales() {
+  elements.directionGrid.querySelectorAll('.card-paper-frame').forEach((frame) => frame.querySelector('.card-paper')?.style.setProperty('--card-scale', String(frame.clientWidth / PAPER_WIDTH_PX)));
+}
+async function openDirection(id) {
+  const direction = findDirection(id); if (!direction) return;
+  if (activeDirection?.id !== id && !(await saveNow())) return;
+  resetEditorState(direction); renderPaper(); setView('editor'); scheduleFit(); await persistStore(); setStatus('已保存', 'saved');
+}
+function openDirections() { setView('directions'); }
+function openDialog(dialog) { if (!dialog.open) dialog.showModal(); }
+function confirmAction(message, title = '请确认', actionText = '确认') {
+  elements.confirmTitle.textContent = title; elements.confirmMessage.textContent = message; elements.confirmAction.textContent = actionText; openDialog(elements.confirmDialog);
+  return new Promise((resolve) => {
+    const done = () => { elements.confirmDialog.removeEventListener('close', done); resolve(elements.confirmDialog.returnValue === 'confirm'); };
+    elements.confirmDialog.addEventListener('close', done);
+  });
+}
+function openCreateDirection() {
+  elements.directionName.value = '';
+  elements.directionTemplate.replaceChildren(...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
+  if (activeDirection) elements.directionTemplate.value = activeDirection.id;
+  openDialog(elements.directionDialog); elements.directionName.focus();
+}
+async function createDirection() {
+  const name = elements.directionName.value.trim(); const template = findDirection(elements.directionTemplate.value) || activeDirection;
+  if (!name || !template) return;
+  if (!(await saveNow())) return;
+  const direction = makeDirection(name, template.currentDraft.content, template.currentDraft.layout);
+  storeState.directions.push(direction); resetEditorState(direction); await persistStore();
+  elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
+}
+function openRenameDirection(id) {
+  const direction = findDirection(id); if (!direction) return;
+  pendingRenameId = id; elements.renameName.value = direction.name; openDialog(elements.renameDialog); elements.renameName.focus(); elements.renameName.select();
+}
+async function renameDirection(name) {
+  const direction = findDirection(pendingRenameId); pendingRenameId = null; if (!direction || !name.trim()) return;
+  const value = name.trim(); if (value === direction.name) return;
+  if (direction.id === activeDirection?.id) pushUndo(true);
+  direction.name = value; if (direction.id === activeDirection?.id) elements.title.textContent = value;
+  await persistStore(); if (currentView === 'directions') renderDirections(); setStatus('已保存', 'saved');
+}
+async function deleteDirection(id) {
+  if (storeState.directions.length <= 1) { showToast('至少要保留一份简历方向。', 'error'); return; }
+  const direction = findDirection(id); if (!direction) return;
+  if (!await confirmAction(`“${direction.name}”会被永久删除，不能恢复。`, '删除简历方向', '删除')) return;
+  const wasActive = activeDirection?.id === id;
+  const index = storeState.directions.findIndex((item) => item.id === id);
+  storeState.directions.splice(index, 1);
+  if (wasActive) resetEditorState(storeState.directions[Math.min(index, storeState.directions.length - 1)]);
+  await persistStore();
+  if (wasActive) { renderPaper(); setView('editor'); scheduleFit(); }
+  else renderDirections();
+}
+async function printPdf() {
+  // Re-measure immediately so a click made during the autosave debounce cannot
+  // print a stale layout decision.
+  applyAutoFit();
+  if (exportBlockedReason) { showToast(exportBlockedReason, 'error'); return; }
+  if (!(await saveNow())) return;
+  const oldTitle = document.title; document.title = activeDirection?.name || '简历';
+  window.print();
+  window.setTimeout(() => { document.title = oldTitle; }, 1500);
+}
+function installEvents() {
+  elements.paperContent.addEventListener('keydown', onEditorKeydown);
+  elements.paperContent.addEventListener('paste', onPaste);
+  elements.paperContent.addEventListener('beforeinput', onBeforeInput);
+  elements.paperContent.addEventListener('input', onInput);
+  elements.paperContent.addEventListener('compositionstart', onCompositionStart);
+  elements.paperContent.addEventListener('compositionend', onCompositionEnd);
+  elements.paperContent.addEventListener('focusin', onFocusIn);
+  elements.paperContent.addEventListener('focusout', onFocusOut);
+  elements.paperContent.addEventListener('click', (event) => {
+    const add = event.target.closest('[data-add-link]'); if (add) { event.preventDefault(); addLink(add.dataset.addLink); return; }
+    if (event.target.closest('a[data-edit]')) event.preventDefault();
+  });
+  elements.title.addEventListener('click', () => openRenameDirection(activeDirection?.id));
+  byId('open-directions').addEventListener('click', openDirections);
+  byId('back-editor').addEventListener('click', () => setView('editor'));
+  byId('create-direction').addEventListener('click', openCreateDirection);
+  elements.directionSearch.addEventListener('input', renderDirections);
+  elements.directionGrid.addEventListener('click', async (event) => {
+    const rename = event.target.closest('[data-rename-direction]'); if (rename) { event.stopPropagation(); openRenameDirection(rename.dataset.renameDirection); return; }
+    const remove = event.target.closest('[data-delete-direction]'); if (remove) { event.stopPropagation(); await deleteDirection(remove.dataset.deleteDirection); return; }
+    const frame = event.target.closest('[data-open-direction]'); if (frame) await openDirection(frame.dataset.openDirection);
+  });
+  elements.directionGrid.addEventListener('keydown', async (event) => { const frame = event.target.closest('[data-open-direction]'); if (frame && ['Enter', ' '].includes(event.key)) { event.preventDefault(); await openDirection(frame.dataset.openDirection); } });
+  elements.directionForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'create') { event.preventDefault(); createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); } });
+  elements.renameForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'rename') { event.preventDefault(); const value = elements.renameName.value; elements.renameDialog.close('renamed'); renameDirection(value).catch((error) => showToast(`改名失败：${error.message}`, 'error')); } });
+  elements.confirmForm.addEventListener('submit', (event) => { if (!event.submitter) { event.preventDefault(); elements.confirmDialog.close('cancel'); } });
+  byId('view-page').addEventListener('click', () => { viewMode = 'fit'; zoomFactor = 1; updateViewScale(); });
+  byId('view-actual').addEventListener('click', () => { viewMode = 'actual'; zoomFactor = 1; updateViewScale(); });
+  byId('zoom-out').addEventListener('click', () => { zoomFactor = Math.max(0.5, Number((zoomFactor - 0.05).toFixed(2))); updateViewScale(); });
+  byId('zoom-in').addEventListener('click', () => { zoomFactor = Math.min(2, Number((zoomFactor + 0.05).toFixed(2))); updateViewScale(); });
+  byId('zoom-readout').addEventListener('click', () => { zoomFactor = 1; viewMode = 'actual'; updateViewScale(); });
+  byId('toggle-guide').addEventListener('click', () => { showGuide = !showGuide; elements.paper.classList.toggle('guide-on', showGuide); byId('toggle-guide').setAttribute('aria-pressed', String(showGuide)); });
+  elements.export.addEventListener('click', printPdf);
+  window.addEventListener('resize', updateViewScale);
+  window.addEventListener('scroll', updateSortHandle, true);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && saveTimer) saveNow().catch(() => {});
+  });
+  window.addEventListener('pagehide', () => {
+    if (saveTimer) saveNow().catch(() => {});
+  });
+  window.addEventListener('keydown', async (event) => {
+    const key = event.key.toLowerCase();
+    if (event.metaKey && key === 's') { event.preventDefault(); return; }
+    if (event.metaKey && key === 'f') { event.preventDefault(); openDirections(); return; }
+    if (event.metaKey && key === 'z') { event.preventDefault(); if (!event.shiftKey) await undo(); return; }
+    if (event.metaKey && ['i', 'u'].includes(key)) { event.preventDefault(); return; }
+    if (event.key === 'Escape' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { if (currentView === 'directions') setView('editor'); }
+  }, true);
+}
+function installDragObservers() {
+  new ResizeObserver(updateViewScale).observe(elements.paperScroller);
+  new ResizeObserver(updateCardScales).observe(elements.directionGrid);
+  installDrag();
+}
+async function boot() {
+  installEvents(); installDragObservers();
+  try {
+    await loadStore();
+    const direction = findDirection(storeState.lastOpenedDirectionId) || storeState.directions[0];
+    resetEditorState(direction); renderPaper(); setStatus('已保存', 'saved');
+    requestAnimationFrame(() => { applyAutoFit(); updateViewScale(); });
+  } catch (error) { setStatus('打开失败', 'error'); showToast(`简历没有打开。原因：${error.message}`, 'error'); }
+}
+
+boot();

@@ -2,24 +2,33 @@
 
 ## 目标与状态
 
-Resume 是优先交付、用于真实简历制作的独立 App，目标目录为 `/Users/frog/Projects/resume`。首版仅本人在当前 Mac 自用：快速编辑多份简历并导出 PDF。每份简历有一个自动保存的当前稿和多个永久只读快照；从快照继续编辑会完整复制成新简历，不覆盖旧快照或原当前稿。以用户指定妙搭稿为初稿及版面基础，保持单张 A4，超页时缩小文字。首版不接 AI。Career-Next 继续作为长期优化项目；两边独立保存资料、独立发版，实际使用经验人工反馈。
+Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。首版仅本人在当前 Mac、当前 Chrome 自用：侧边栏内快速编辑多个命名的简历方向并通过 Chrome 打印导出 PDF。每个方向只有一个自动保存的当前稿；新方向从已有方向复制后独立演进；不再提供快照、废纸篓或历史版本。以用户指定妙搭稿为初稿及版面基础，保持单张 A4，超页时缩小文字。首版不读取网页、不接 AI、不申请网站权限。Career-Next 继续作为长期优化项目；两边独立保存资料、独立发版，实际使用经验人工反馈。
 
-2026-10-11：首版无上下文对抗审查已完成，正在与用户逐项核对建议。用户已选择自动缩字最低8.5pt，仍超页时保留全文并暂停PDF导出。全部问题对齐后须在开发前最后一次对话给出明确启动信号。指定妙搭原稿47字段已采集到本机`.private/sources/`，字段数和传输校验值一致；尚未装配进正式App、实现功能或完成生产验收。
+2026-10-16：自动排版算法 L-19 获用户批准并冻结，见`SPEC.md`。本轮形态调整后，`extension/`是 Chrome 侧边栏实现：`extension/sidepanel.mjs`负责方向室、纸面编辑、快捷键、自动保存和 Chrome 打印，`extension/domain-*.mjs`保存领域规则副本，`extension/service-worker.js`只负责打开侧边栏。`src/domain/`和`server/`保留为旧的本机 App 实现与排版测试参考，不能作为侧边栏运行依赖。当前扩展先加载试用，再验收真实侧边栏宽度、Mac 快捷键、中文输入和打印结果。
 
 ## 阅读入口
 
 - [产品规格](SPEC.md)：产品行为、功能约束、字号范围与快捷键的唯一维护入口；区分已确认、待确认建议和来源事实。
 - [协作约定](AGENTS.md)：后续agent的阅读与维护规则。
 - [抽离设计讨论](docs/extraction-design.md)：已确定目标、源码调查事实、待回答问题与实施边界。
+- [侧边栏 UI/UX 设计方向](docs/design/sidepanel-ui-directions.md)：外围界面四个风格方向（纸面工坊/便签投递台/暗房灯箱/活字排版间）与共同可用性基线；纸面冻结规则不动，方向未选定、未实现。
 - [无上下文对抗审查](docs/review/first-version-adversarial.md)：6组待确认建议及审查范围。
 - [自动排版算法对抗审查](docs/review/spacing-auto-layout-algorithms.md)：从页面约束和真实排版出发，对比三种重构方案并给出未定稿的推荐；不构成已确认产品规则。
+- [Gemini间距算法对抗审查](docs/review/gemini-spacing-adversarial-20261016.md)：Gemini独立审查七处候选间距，提出一个共用松紧旋钮方案；含本地复核与不应照抄的项目冲突，不构成已确认产品规则。
+- [八处排版数值的独立对抗审查](docs/review/spacing-eight-gaps-adversarial-20261016.md)：新子代理核对行高倒挂、八处间隙比例与自动排布次序；结果是试用建议，不是冻结规则。
+- [自动排版算法研究](docs/research/spacing-algorithm-alternatives.md)：用户提出字号和间距按固定比例联动、超出时逐档缩字号的新候选；系数和纸面效果待测试，不构成已确认产品规则。
 - [A4字号与缩页演示](prototypes/a4-typography-demo.html) / [演示说明](prototypes/README.md)：独立HTML讨论演示，资料均为虚构；README说明怎么打开和试用，CHANGELOG保留各版记录；演示操作不是正式App验收。
-- 当前审阅用 [第十四版当前稿／只读快照／收藏馆演示](prototypes/a4-typography-demo-v14.html)：可演示⌘S命名快照、⌘F收藏馆、按时间倒序和搜索、旧快照复制成新简历、快照进废纸篓、四边固定9mm留白、A4 PDF打印导出、可选GitHub/个人网站、要点拖动及工作/项目整段经历拖动。收藏馆默认每行三张简历A4缩略纸面并纵向滚动；快照内容不可修改。编辑页点左上名称改名，不显示⌘F提示；网页/Word粘贴只留文字，正文多行粘贴按每行新建要点处理。四个板块固定且不可删/换序；工作/项目任一三栏字段清空后二次删除会删整段经历。Demo只在内存运行，刷新会重置，PDF通过系统打印窗口生成。自动排版面板把四种间距拆成滑杆卡片，三步说明排版顺序，算式默认收起；纸面实际间距和占纸高度会实时更新。候选范围与规则仍待确认。PDF一致性、文字/链接能力、命名和失败重试已确认，快照只存内容、不附PDF。四边固定9mm和PDF下载位置已确认。正式App启动门不变。[演示说明](prototypes/README.md)。
-- [第十六版白话排版对比演示](prototypes/a4-spacing-algorithm-demo-v16.html)：以第十四版原稿为底，在同一份简历上对比“更铺满/留些白纸”；主说明改为三步短句，数字和间距细节默认收起。当前稿不被修改，算法及两种目标仍是未冻结的演示候选。[演示说明](prototypes/README.md)。
-- [Gemini编辑/版本设计](design-handoff/editor-versions/BRIEF.md)：本轮UI探索简报、最小外发素材与状态；最新稿自动保存和页内简历/定版搜索已确认，正式App尚未开工。
+- [第十四版历史交互演示](prototypes/a4-typography-demo-v14.html)：包含⌘S快照、⌘F收藏馆、废纸篓、9mm边距、A4 PDF打印、可选链接、纸面编辑、要点/经历拖动等交互探索；刷新会重置，PDF使用浏览器打印。它早期的间距滑杆和候选范围已被后续版本取代，当前冻结算法以`SPEC.md` L-19为准。[演示说明](prototypes/README.md)。
+- [第二十三版四个间隔标注](prototypes/a4-spacing-algorithm-demo-v23.html)：编辑页A4纸用彩色数字标出四个间隔，左侧同号对应；侧栏用三步和简单算式说明排版。候选范围与正式算法仍待确认。[演示说明](prototypes/README.md)。
+- [第三十四版间距对齐演示](prototypes/a4-spacing-eight-gaps-demo-v34.html)：第4处“上一分区内容到下一个大标题”与第7处使用相同的字号×0.60×(1＋0.30×松紧度)。整套算法已写入`SPEC.md`并获批准；此网页仅作视觉参考，不代表正式App实现。[演示说明](prototypes/README.md)。
+- [第三十三版空隙微调演示](prototypes/a4-spacing-eight-gaps-demo-v33.html)：以第三十二版为底，只把第4处“上一分区内容到下一个大标题”从字号×0.92调至×0.84，其他比例和功能不动；字号步长为0.01pt。仍是视觉审核原型，不代表正式规格或App实现。[演示说明](prototypes/README.md)。
+- [第三十二版 Gemini 算法试用演示](prototypes/a4-spacing-eight-gaps-demo-v32.html)：在第三十一版完整演示上，只换成 Gemini 推荐的八项比例与排字顺序；以虚构稿展示编辑后自动适配，保留9mm虚线框和整页/100%切换。算法仍待用户审批，不是正式实现；字号步长为0.01pt。[演示说明](prototypes/README.md)。
+- [第三十一版八处间隙试用演示](prototypes/a4-spacing-eight-gaps-demo-v31.html)：加入八处编号、自动联动候选比例及第8处可变间隙；保留纸面编辑、9mm虚线框和整页/100%视图，是第三十二版的前一版。[演示说明](prototypes/README.md)。
+- [Gemini UI/UX协作记录](design-handoff/editor-versions/BRIEF.md)：记录给Gemini的提示核对、等待过程、设计建议及采纳边界；Gemini不改产品规则，首版已进入实现与验收。
 - [术语](GLOSSARY.md)：明确两个产品名称，后续按已确认的业务规则补充。
 - [独立交付决定](docs/adr/0001-independent-delivery.md)：首版不依赖两项目自动同步。
-- [简历身份归属](docs/adr/0002-resume-owned-identity.md)：每份简历独立维护身份，复制后互不影响。
+- [简历身份归属](docs/adr/0002-resume-owned-identity.md)：每个方向独立维护身份，模板复制后互不影响。
+- [侧边栏与简历方向](docs/adr/0003-sidepanel-directions.md)：Chrome 侧边栏形态、自动保存、方向替代快照及 Chrome 打印边界。
 - 来源：`/Users/frog/Projects/Career-Next` 与 `/Users/frog/Projects/Career` 的简历相关模块。
 
 确定首版结构和主要流程后更新本地图。来源项目的已通过验收不等于独立 Resume 已通过验收。

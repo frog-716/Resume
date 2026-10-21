@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Resume</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div class="brand-area">
+        <button class="resume-title" id="resume-title" type="button" aria-label="点击修改简历方向名称"></button>
+        <span class="save-status" id="save-status" role="status">正在打开…</span>
+      </div>
+      <div class="top-actions">
+        <button class="quiet-button" id="open-directions" type="button" title="⌘F">方向室</button>
+        <button class="primary-button" id="export-pdf" type="button">打印 PDF</button>
+      </div>
+    </header>
+
+    <main class="workspace" id="editor-view">
+      <div class="paper-scroller" id="paper-scroller">
+        <div class="paper-space" id="paper-space">
+          <article class="paper" id="resume-paper" aria-label="简历编辑稿">
+            <div class="paper-content" id="paper-content"></div>
+            <div class="safe-zone" aria-hidden="true"></div>
+            <div class="boundary" aria-hidden="true"><span>超页部分仍显示 · 暂停打印</span></div>
+          </article>
+        </div>
+      </div>
+      <div class="view-controls" role="group" aria-label="纸张查看方式">
+        <div class="view-segment">
+          <button class="quiet-button view-button" id="view-page" type="button" aria-pressed="true">整页</button>
+          <button class="quiet-button view-button" id="view-actual" type="button" aria-pressed="false">100%</button>
+        </div>
+        <button class="quiet-button zoom-button" id="zoom-out" type="button" aria-label="缩小">−</button>
+        <button class="quiet-button zoom-readout" id="zoom-readout" type="button" title="重置显示比例">100%</button>
+        <button class="quiet-button zoom-button" id="zoom-in" type="button" aria-label="放大">＋</button>
+        <button class="quiet-button guide-button" id="toggle-guide" type="button" aria-pressed="true"><span class="dashed-square" aria-hidden="true"></span>虚线框</button>
+      </div>
+    </main>
+
+    <section class="library-view hidden" id="direction-view" aria-label="简历方向室">
+      <header class="library-header">
+        <button class="back-button" id="back-editor" type="button" aria-label="返回编辑">‹</button>
+        <label class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="direction-search" type="search" placeholder="搜索简历方向" autocomplete="off" aria-label="搜索简历方向"></label>
+        <button class="primary-button small-primary" id="create-direction" type="button" aria-label="新建简历方向" title="新建方向">＋</button>
+      </header>
+      <div class="library-grid" id="direction-grid"></div>
+    </section>
+  </div>
+
+  <button id="sort-handle" class="sort-handle" type="button" hidden aria-label="从这里拖动排序" title="从这里拖动排序"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a6.5 6.5 0 0 0-6.5 6.5v4a6.5 6.5 0 0 0 13 0v-4A6.5 6.5 0 0 0 12 3.5Z"/><path d="M12 3.8v6.1M5.8 10h12.4"/><path d="M12 5.7v1.4" stroke-width="2.2"/></svg></button>
+
+  <dialog class="modal" id="direction-dialog">
+    <form method="dialog" id="direction-form">
+      <h2>新建简历方向</h2>
+      <label class="modal-label" for="direction-name">方向名称</label>
+      <input id="direction-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位">
+      <label class="modal-label" for="direction-template">选择模板</label>
+      <select id="direction-template" name="template"></select>
+      <div class="modal-actions"><button class="quiet-button" value="cancel">取消</button><button class="primary-button" value="create">创建</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="rename-dialog">
+    <form method="dialog" id="rename-form">
+      <h2>修改方向名称</h2>
+      <label class="modal-label" for="rename-name">方向名称</label>
+      <input id="rename-name" name="name" maxlength="80" required autocomplete="off">
+      <div class="modal-actions"><button class="quiet-button" value="cancel">取消</button><button class="primary-button" value="rename">保存</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="confirm-dialog">
+    <form method="dialog" id="confirm-form">
+      <h2 id="confirm-title">请确认</h2>
+      <p id="confirm-message"></p>
+      <div class="modal-actions"><button class="quiet-button" value="cancel">取消</button><button class="primary-button danger-button" value="confirm" id="confirm-action">确认</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast hidden" id="toast" role="alert"></div>
+  <script type="module" src="sidepanel.mjs"></script>
+</body>
+</html>

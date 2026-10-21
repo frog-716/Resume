@@ -1,0 +1,14 @@
+{
+  "name": "resume-mac",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "独立的本机简历编辑器",
+  "scripts": {
+    "dev": "node server/index.mjs",
+    "start": "node server/index.mjs",
+    "build": "node scripts/build.mjs",
+    "build:extension": "node scripts/build-extension.mjs",
+    "test": "node --test src/domain/*.test.mjs server/*.test.mjs"
+  }
+}

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>简历间隙试用 · 第26版</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:light;--purple:#66439d;--ink:#28232e;--muted:#746b7e;--line:#e5dfeb;--paper-shadow:0 8px 30px #20182b20}
+body{margin:0;background:#f4f2f6;color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+.shell{max-width:1380px;margin:0 auto;padding:18px 22px 36px}
+h1{font-size:21px;margin:0;font-weight:650}
+.sub{margin:4px 0 16px;color:var(--muted);font-size:13px}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:20px;align-items:start}
+.side{position:sticky;top:16px;display:grid;gap:12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:0 1px 2px #24183408}
+.card h2{font-size:14px;margin:0 0 10px;font-weight:650}
+.font-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.font-button{border:1px solid #ded7e7;border-radius:8px;background:#fff;padding:9px 7px;text-align:center;font:inherit}
+.font-button[aria-pressed="true"]{border-color:var(--purple);background:#f4effa;color:var(--purple);font-weight:650}
+.gap-list{display:grid;gap:0}
+.gap-item{padding:11px 0;border-bottom:1px solid #eee9f2}
+.gap-item:last-child{border:0;padding-bottom:1px}
+.gap-name{display:flex;align-items:center;gap:8px;font-weight:650}
+.dot{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;color:#fff;font-size:11px;flex:none}
+.d1{background:#237c75}.d2{background:#aa5d25}.d3{background:#5269a7}
+.gap-formula{margin:4px 0 0 28px;color:var(--muted);font-size:12px}
+.gap-value{color:var(--purple);font-weight:700}
+.note{margin:10px 0 0;padding:9px 10px;border-radius:8px;background:#edf5ef;color:#365343;font-size:12px;line-height:1.55}
+.paper-label{display:flex;justify-content:space-between;margin:0 0 8px;color:var(--muted);font-size:12px}
+.paper-stage{display:flex;justify-content:center;align-items:flex-start;overflow:visible}
+.paper{position:relative;width:210mm;height:297mm;flex:none;padding:9mm;background:#fff;color:#252525;box-shadow:var(--paper-shadow);transform-origin:top center;font-family:"PingFang SC",sans-serif;--body-pt:10.5;--entry-pt:11;--body-line:1.375;--entry-line:1.30;--bullet-gap:2.212px;--section-gap:11.046px;--g1:5.04px;--g2:7.98px;--g3:5.18px}
+.paper-content{position:relative;z-index:1}
+.name{margin:0 0 6px;text-align:center;font-size:18pt;line-height:1.25;font-weight:700}
+.contact{text-align:center;margin:0 0 5mm;font:8.5pt/1.4 "Times New Roman","PingFang SC",serif;white-space:nowrap}
+.section-heading{display:flex;align-items:center;gap:12px;margin:var(--section-gap) 0 0}
+.section-heading:first-of-type{margin-top:4.5px}
+.section-heading span{min-width:90px;padding:4px 10px;border-left:4px solid #deddda;border-radius:0 3px 3px 0;background:#424242;color:white;text-align:center;font-size:12pt;line-height:1.25;font-weight:500}
+.section-heading:after{content:"";flex:1;border-top:1px solid #bbb}
+.gap-slot{position:relative;height:var(--gap);display:flex;justify-content:center;align-items:center}
+.gap-slot:after{content:"";width:28px;border-top:2px solid var(--tone);opacity:.8}
+.gap-slot b{position:absolute;left:-9px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--tone);color:#fff;font:700 10px/1 -apple-system,BlinkMacSystemFont,sans-serif}
+.gap-one{--gap:var(--g1);--tone:#237c75}.gap-two{--gap:var(--g2);--tone:#aa5d25}.gap-three{--gap:var(--g3);--tone:#5269a7}
+.bullets{padding:0 0 0 17px;margin:0}
+.bullets li{position:relative;list-style:none;font-size:calc(var(--body-pt)*1pt);line-height:var(--body-line);margin:var(--bullet-gap) 0;white-space:pre-wrap}
+.bullets li:before{content:"•";position:absolute;left:-13px;color:#424242}
+.skills-list li:first-child{margin-top:0}
+.experience-head{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0 5px 4px;align-items:start;line-height:var(--entry-line)}
+.experience-head span{font-size:calc(var(--entry-pt)*1pt);font-weight:700;line-height:var(--entry-line);min-width:0;overflow-wrap:anywhere}
+.experience-head span:nth-child(2){text-align:center}.experience-head span:nth-child(3){text-align:right;font-weight:400}
+.experience-list{display:flex;flex-direction:column}
+.experience-list .bullets{margin:2px 0 0}
+.experience-list .bullets li:last-child{margin-bottom:0}
+.source-note{margin:8px 0 0;color:var(--muted);font-size:11px;text-align:center}
+@media(max-width:850px){.shell{padding:12px}.layout{grid-template-columns:1fr}.side{position:static;grid-template-columns:1fr 1fr}.paper-stage{overflow:hidden}.side .card:first-child{grid-column:1}.side .card:nth-child(2){grid-column:2}}
+@media(max-width:520px){.side{grid-template-columns:1fr}.side .card:first-child,.side .card:nth-child(2){grid-column:1}.shell{padding:10px}.paper-label{font-size:11px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <h1>看三处空隙怎么随字号变</h1>
+  <p class="sub">点“大字”和“小字”，看简历里带圆点的三处空隙。</p>
+  <div class="layout">
+    <aside class="side">
+      <section class="card">
+        <h2>换一个正文字号</h2>
+        <div class="font-options">
+          <button class="font-button" data-font="10.5" aria-pressed="true">大字<br>10.50pt</button>
+          <button class="font-button" data-font="8.5" aria-pressed="false">小字<br>8.50pt</button>
+        </div>
+      </section>
+      <section class="card">
+        <h2>这三处空隙的试用算法</h2>
+        <div class="gap-list">
+          <div class="gap-item"><div class="gap-name"><i class="dot d1">1</i>大标题到第一条要点</div><p class="gap-formula">正文字号 × 0.36　<span class="gap-value" data-value="1">3.78pt</span></p></div>
+          <div class="gap-item"><div class="gap-name"><i class="dot d2">2</i>大标题到三栏条目</div><p class="gap-formula">正文字号 × 0.57　<span class="gap-value" data-value="2">5.99pt</span></p></div>
+          <div class="gap-item"><div class="gap-name"><i class="dot d3">3</i>上一段要点到下一段三栏</div><p class="gap-formula">正文字号 × 0.37　<span class="gap-value" data-value="3">3.89pt</span></p></div>
+        </div>
+        <p class="note">大字时，空隙接近现在的样子；字号变小时，空隙也跟着缩小。这里的数字是试用值，还没定稿。</p>
+      </section>
+    </aside>
+    <section class="preview">
+      <div class="paper-label"><span id="font-label">大字 · 正文10.50pt</span><span>四边留白 9mm</span></div>
+      <div class="paper-stage" id="paper-stage">
+        <article class="paper" id="paper"><div class="paper-content">
+          <header>
+            <h2 class="name">林舟 · 虚构样稿</h2>
+            <p class="contact">☎ 13800000000　|　✉ linzhou@example.com　|　☏ linzhou_work<br>♧ https://github.com/example-research　|　◎ https://www.example-portfolio.com</p>
+          </header>
+          <div class="section-heading"><span>专业技能</span></div>
+          <div class="gap-slot gap-one" aria-label="空隙1：大标题到第一条要点"><b>1</b></div>
+          <ul class="bullets skills-list">
+            <li>经营分析：围绕订单、销售额、转化与退款梳理指标口径，按渠道和商品拆解变化；把数据结论与实际业务反馈对照，整理下一步需要核查的问题。</li>
+            <li>数据工具：使用 Excel、SQL、Python 与可视化工具清理数据，维护经营报表；按统一口径核对来源、更新时间和统计范围，保证每次复盘能够复现。</li>
+            <li>沟通协作：整理业务需求与优先级，和运营、设计及财务确认交付标准；用简洁文档说明数据变化、实现结果及仍需跟进的问题。</li>
+          </ul>
+          <div class="section-heading"><span>工作经历</span></div>
+          <div class="gap-slot gap-two" aria-label="空隙2：大标题到三栏条目"><b>2</b></div>
+          <div class="experience-list">
+            <div class="experience">
+              <div class="experience-head"><span>远景科技 · 虚构公司</span><span>数据与运营助理</span><span>2024.06 — 2025.08</span></div>
+              <ul class="bullets"><li>经营复盘：整理多渠道日常经营数据并输出阶段报告，围绕商品、流量、转化与退款定位变化；对照业务记录提出核查方向，向团队汇报关键指标和待办事项。</li><li>内部提效：收集多个业务小组的重复工作，明确输入、输出与异常处理方式；建立可执行的流程说明并组织试用，根据实际反馈迭代操作步骤和检查清单。</li></ul>
+            </div>
+            <div class="gap-slot gap-three" aria-label="空隙3：上一段要点到下一段三栏"><b>3</b></div>
+            <div class="experience">
+              <div class="experience-head"><span>星河科技 · 虚构团队</span><span>产品运营专员</span><span>2022.01 — 2024.05</span></div>
+              <ul class="bullets"><li>流程梳理：围绕业务目标整理数据需求，区分原始记录、统一指标与展示结果；把输入条件和边界写清楚，减少报表之间因口径不同造成的误解。</li><li>数据整理：清洗多来源经营记录，维护一致的商品和渠道维度，核对重复、缺失与异常值；按批次保存处理结果，让问题能够定位到具体来源。</li></ul>
+            </div>
+          </div>
+          <div class="section-heading"><span>项目经历</span></div>
+          <div class="gap-slot gap-two" aria-label="空隙2：大标题到三栏条目"><b>2</b></div>
+          <div class="experience-list">
+            <div class="experience">
+              <div class="experience-head"><span>经营分析与报表平台</span><span>数据与流程设计</span><span>2025.03 — 2025.08</span></div>
+              <ul class="bullets"><li>流程梳理：围绕业务目标整理数据需求，区分原始记录、统一指标与展示结果；把输入条件和边界写清楚，减少报表之间因口径不同造成的误解。</li><li>数据整理：清洗多来源经营记录，维护一致的商品和渠道维度，核对重复、缺失与异常值；按批次保存处理结果，让问题能够定位到具体来源。</li></ul>
+            </div>
+            <div class="gap-slot gap-three" aria-label="空隙3：上一段要点到下一段三栏"><b>3</b></div>
+            <div class="experience">
+              <div class="experience-head"><span>信息归集与日报流程</span><span>流程搭建与验证</span><span>2024.11 — 2025.02</span></div>
+              <ul class="bullets"><li>分层设计：将信息采集、结构整理和结果展示分开，保留每次处理的来源与时间；让上游格式变化只影响对应步骤，避免整条流程重复重写。</li><li>日报输出：把业务进展、关键问题与明确待办分类整理，保留必要的原文依据；用简洁格式呈现结果，帮助团队减少重复翻阅分散消息的时间。</li></ul>
+            </div>
+          </div>
+          <div class="section-heading"><span>教育背景</span></div>
+          <div class="gap-slot gap-two" aria-label="空隙2：大标题到三栏条目"><b>2</b></div>
+          <div class="experience-head"><span>示例大学</span><span>信息工程 · 虚构专业</span><span>2020 — 2024</span></div>
+          <ul class="bullets"><li>学习经历：课程覆盖数据分析、软件基础、系统设计与项目实践，结合课程任务完成数据整理和结果展示。</li><li>项目实践：在团队项目中承担资料整理、原型搭建与结果验证，记录过程问题，形成结构清晰的说明文档。</li></ul>
+        </div></article>
+      </div>
+      <p class="source-note">虚构简历，仅演示这三处空隙随字号变化。</p>
+    </section>
+  </div>
+</main>
+<script>
+const paper=document.getElementById('paper');
+const stage=document.getElementById('paper-stage');
+const values={1:.36,2:.57,3:.37};
+function applyFont(pt){
+  const pxPerPt=1/.75;
+  paper.style.setProperty('--body-pt',pt);
+  paper.style.setProperty('--entry-pt',pt+.5);
+  paper.style.setProperty('--bullet-gap',(pt*.158*pxPerPt)+'px');
+  paper.style.setProperty('--section-gap',(pt*.789*pxPerPt)+'px');
+  for(const [key,ratio] of Object.entries(values)){
+    const gapPt=pt*ratio;
+    paper.style.setProperty('--g'+key,(gapPt*pxPerPt)+'px');
+    document.querySelector('[data-value="'+key+'"]').textContent=(Math.round(gapPt*100+1e-8)/100).toFixed(2)+'pt';
+  }
+  document.getElementById('font-label').textContent=(pt>9?'大字':'小字')+' · 正文'+pt.toFixed(2)+'pt';
+  document.querySelectorAll('[data-font]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.font)===pt)));
+  layoutPaper();
+}
+function layoutPaper(){
+  paper.style.transform='none';
+  const scale=Math.min(1,(stage.clientWidth||stage.parentElement.clientWidth-8)/paper.offsetWidth);
+  paper.style.transform='scale('+scale+')';
+  stage.style.height=(paper.offsetHeight*scale)+'px';
+}
+document.querySelectorAll('[data-font]').forEach(b=>b.addEventListener('click',()=>applyFont(Number(b.dataset.font))));
+window.addEventListener('resize',layoutPaper);
+applyFont(10.5);
+</script>
+</body>
+</html>
