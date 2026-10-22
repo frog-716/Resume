@@ -358,7 +358,7 @@ function createExperience(entry, sectionType, editable) {
       : textSpan(column.html, column.align));
   });
   block.append(head);
-  if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable, entry.id));
+  if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable));
   return block;
 }
 function createSection(contentSection, editable, isFirst) {
@@ -684,7 +684,8 @@ function addExperienceAfter(sectionType, entryId) {
   const section = draft.sections.find((item) => item.type === sectionType);
   if (!section || !['work', 'projects'].includes(sectionType)) return;
   pushUndo(true);
-  const item = { id: uid(`${sectionType}-entry`), columns: [{ html: '' }, { html: '' }, { html: '' }], bullets: [] };
+  // 新建经历时自动带一条空要点（带"要点"占位），不用再手动起头。
+  const item = { id: uid(`${sectionType}-entry`), columns: [{ html: '' }, { html: '' }, { html: '' }], bullets: [{ id: uid(`${sectionType}-bullet`), html: '' }] };
   const anchorIndex = section.entries.findIndex((entry) => entry.id === entryId);
   section.entries.splice(anchorIndex < 0 ? section.entries.length : anchorIndex + 1, 0, item);
   renderPaper(); scheduleFit(); scheduleSave();
@@ -850,8 +851,9 @@ function installDrag() {
     if (!item || !list) return;
     event.preventDefault();
     const rect = item.getBoundingClientRect();
-    // 拖动期不实时搬动真实条目：原条目保留占位（visibility:hidden，不脱离布局），
-    // 避免每帧重排整页；视觉上用一个 fixed 克隆体（ghost）跟随指针。
+    // 拖动期：被拖条目自己变成"空位框"（内容隐藏、保留占位不脱离布局），
+    // 其余条目围着这个框实时重排——指针指向的那一行会"让位"下移，空位框停
+    // 在它的位置上。于是要替代的是哪一行一眼可见，不必再猜 2px 指示线。
     item.classList.add('drag-source');
     const ghost = item.cloneNode(true);
     ghost.classList.remove('drag-source', 'selected', 'dragging');
@@ -863,31 +865,39 @@ function installDrag() {
     ghost.style.width = `${rect.width}px`;
     ghost.style.height = `${rect.height}px`;
     document.body.append(ghost);
-    // 2px 墨蓝插入指示线，标识落点（设计文档 §2 要求）。fixed 定位，移动零重排。
-    const indicator = document.createElement('div');
-    indicator.className = 'sort-indicator';
-    indicator.hidden = true;
-    document.body.append(indicator);
+    // 落点提示牌：画在空位框左上角。z-index 高于 ghost（85 > 80），
+    // 所以即使拖动中的那一行正好压在框上，"放在哪"这句话也不会被盖住。
+    const hint = document.createElement('div');
+    hint.className = 'drop-hint';
+    hint.textContent = '松手放到这里';
+    hint.hidden = true;
+    document.body.append(hint);
     dragState = {
       item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false,
       pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top,
-      width: rect.width, height: rect.height, ghost, indicator, rafId: 0, lastX: event.clientX, lastY: event.clientY, dropBefore: undefined,
+      width: rect.width, height: rect.height, ghost, hint, rafId: 0, lastX: event.clientX, lastY: event.clientY,
+      // 起拖时的顺序：落点没变就不记撤销、不落盘。
+      originalIds: Array.from(list.querySelectorAll(':scope > .sortable')).map((el) => el.dataset.itemId),
     };
     elements.sortHandle.classList.add('is-dragging');
     try { elements.sortHandle.setPointerCapture(event.pointerId); } catch {}
-    updateSortIndicator(event.clientX, event.clientY);
+    // 起手立刻排一次：手柄在行左侧，指针 Y 可能落在上一行，先校正位置。
+    moveDraggedToTarget(event.clientY);
+    followHandleToFrame();
   });
   document.addEventListener('pointermove', (event) => {
     if (!dragState) return;
     dragState.lastX = event.clientX; dragState.lastY = event.clientY;
-    // rAF 节流：每帧最多重算一次 ghost / 指示线，避免高刷屏上一帧多次重排。
+    // rAF 节流：每帧最多重算一次 ghost 与落点，避免高刷屏上一帧多次重排。
     if (dragState.rafId) return;
     dragState.rafId = requestAnimationFrame(() => {
       dragState.rafId = 0;
       if (!dragState) return;
       dragState.ghost.style.left = `${dragState.lastX - dragState.offsetX}px`;
       dragState.ghost.style.top = `${dragState.lastY - dragState.offsetY}px`;
-      updateSortIndicator(dragState.lastX, dragState.lastY);
+      // 真实搬动空位框：被指向的行当场"让位"，其余行依次让开。
+      moveDraggedToTarget(dragState.lastY);
+      followHandleToFrame();
     });
   });
   document.addEventListener('pointerup', finishDrag); document.addEventListener('pointercancel', finishDrag);
@@ -911,26 +921,46 @@ function installDrag() {
     if (sortHover) { sortHover = null; updateSortHandle(); }
   });
 }
-// 根据指针 Y 计算落点：遍历同列表的兄弟可排项，找到指针所在行之后的第一项，
-// 插入到它之前；越界则插到末尾。指示线画在该落点（fixed，移动零重排）。
-function updateSortIndicator(clientX, clientY) {
-  const { item, list, indicator, width } = dragState;
-  const siblings = Array.from(list.children).filter((el) => el.classList.contains('sortable') && el !== item);
+// 同列表里紧跟在该元素之后的第一个可排项（跳过非可排的兄弟节点）。
+function nextSortableAfter(element) {
+  let node = element.nextElementSibling;
+  while (node && !node.classList.contains('sortable')) node = node.nextElementSibling;
+  return node;
+}
+// 落点计算与真实搬动：指针落在某一行上半部 → 插到它之前（那一行"让位"下移，
+// 空位框停在它的位置）；落在下半部 → 落到它之后；越过末行 → 排到末尾。
+// 被拖条目本身就在流里（它变成了空位框），所以其它行会实时围着它重排，
+// 用户看到的就是"哪一行让开了、哪一格空着"。
+function moveDraggedToTarget(clientY) {
+  const { item, list } = dragState;
+  const siblings = Array.from(list.children).filter((el) => el !== item && el.classList.contains('sortable'));
   let before = null;
-  for (const sib of siblings) {
-    const r = sib.getBoundingClientRect();
-    if (clientY < r.top + r.height / 2) { before = sib; break; }
+  for (const sibling of siblings) {
+    const rect = sibling.getBoundingClientRect();
+    if (clientY < rect.top + rect.height / 2) { before = sibling; break; }
   }
-  let top;
-  let left;
-  if (before) { const r = before.getBoundingClientRect(); top = r.top; left = r.left; }
-  else if (siblings.length) { const last = siblings[siblings.length - 1].getBoundingClientRect(); top = last.bottom; left = last.left; }
-  else { const r = item.getBoundingClientRect(); top = r.bottom; left = r.left; }
-  indicator.hidden = false;
-  indicator.style.top = `${top - 1}px`;
-  indicator.style.left = `${left}px`;
-  indicator.style.width = `${width}px`;
-  dragState.dropBefore = before;
+  const next = nextSortableAfter(item);
+  // 位置没变就不搬：一次 insertBefore 会触发整列表重排，没必要就别动。
+  if (before ? next === before : next === null) return;
+  dragState.moved = true;
+  if (before) list.insertBefore(item, before);
+  else list.append(item);
+}
+// 拖动中手柄跟着空位框走，否则手柄留在原地、和真正要落的位置脱节。
+// 提示牌也钉在空位框左上角，始终指明"这一格"。
+function followHandleToFrame() {
+  if (!dragState) return;
+  const handle = elements.sortHandle;
+  const rect = dragState.item.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  handle.hidden = false;
+  handle.style.top = `${Math.max(2, Math.min(window.innerHeight - 34, rect.top + (rect.height - 32) / 2))}px`;
+  const hint = dragState.hint;
+  if (hint) {
+    hint.hidden = false;
+    hint.style.left = `${Math.max(2, rect.left + 6)}px`;
+    hint.style.top = `${Math.max(2, rect.top + 4)}px`;
+  }
 }
 function finishDrag() {
   if (!dragState) return;
@@ -939,18 +969,18 @@ function finishDrag() {
   if (state.rafId) cancelAnimationFrame(state.rafId);
   state.item.classList.remove('drag-source', 'dragging');
   state.ghost?.remove();
-  state.indicator?.remove();
-  // 落点是否真的变化：与当前真实相邻关系比较，没变就不记撤销、不重排、不落盘。
-  const changed = state.dropBefore ? state.item.nextElementSibling !== state.dropBefore : state.item !== state.list.lastElementChild;
+  state.hint?.remove();
+  // 落点是否真的变化：与起拖时的顺序对比，没变就不记撤销、不重排、不落盘。
+  const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
+  const changed = ids.length !== state.originalIds.length || ids.some((id, index) => id !== state.originalIds[index]);
   if (!changed) { updateSortHandle(); return; }
   pushUndo(true);
-  if (state.dropBefore) state.list.insertBefore(state.item, state.dropBefore);
-  else state.list.append(state.item);
-  const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
+  // DOM 顺序在拖动期就已经是最终顺序，这里只把数据对齐到 DOM（不重建纸面）。
   if (state.kind === 'experience') {
     const section = draft.sections.find((item) => item.type === state.section);
     if (!section?.entries) { scheduleFit(); scheduleSave(); return; }
-    const map = new Map(section.entries.map((item) => [item.id, item])); section.entries = ids.map((id) => map.get(id)).filter(Boolean);
+    const map = new Map(section.entries.map((item) => [item.id, item]));
+    section.entries = ids.map((id) => map.get(id)).filter(Boolean);
   } else {
     // 列表定位不到时安全退出：DOM 顺序已经变了，但草稿不乱写，
     // 重新渲染回到数据里的顺序即可（避免对 null 调用 splice 崩溃）。
