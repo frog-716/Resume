@@ -12,7 +12,7 @@ const COLUMN_PLACEHOLDERS = ['单位 / 项目', '岗位 / 职责', '日期'];
 
 const byId = (id) => document.getElementById(id);
 const elements = {
-  title: byId('resume-title'), saveStatus: byId('save-status'), editor: byId('editor-view'),
+  title: byId('resume-title'), editor: byId('editor-view'),
   paperScroller: byId('paper-scroller'), paperSpace: byId('paper-space'), paper: byId('resume-paper'),
   paperContent: byId('paper-content'), directionView: byId('direction-view'), directionSearch: byId('direction-search'),
   directionGrid: byId('direction-grid'), directionDialog: byId('direction-dialog'), directionForm: byId('direction-form'),
@@ -66,10 +66,6 @@ function uid(prefix = 'item') {
 function nowIso() { return new Date().toISOString(); }
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-}
-function setStatus(text, state = '') {
-  elements.saveStatus.textContent = text;
-  elements.saveStatus.dataset.state = state;
 }
 function showToast(message, kind = '', retry) {
   clearTimeout(toastTimer);
@@ -188,7 +184,6 @@ function scheduleSave() {
   if (!activeDirection || !draft) return;
   draftRevision += 1;
   clearTimeout(saveTimer);
-  setStatus('正在保存…', 'saving');
   saveTimer = setTimeout(() => { saveNow().catch(() => {}); }, 360);
 }
 async function saveNow() {
@@ -206,14 +201,11 @@ async function saveNow() {
   activeDirection.currentDraft = nextDraft;
   storeState.lastOpenedDirectionId = directionId;
   const snapshot = clone(storeState);
-  setStatus('正在保存…', 'saving');
   saveInFlight = persistStore(snapshot).then(() => {
     savedRevision = Math.max(savedRevision, revision);
     if (activeDirection?.id === directionId) activeDirection.currentDraft.updatedAt = nextDraft.updatedAt;
-    setStatus('已保存', 'saved');
     return true;
   }).catch((error) => {
-    setStatus('保存失败', 'error');
     showToast(`保存失败，内容仍在当前页面。原因：${error.message}`, 'error', () => saveNow());
     return false;
   }).finally(() => { saveInFlight = null; });
@@ -248,7 +240,6 @@ async function undo() {
     renderPaper();
     scheduleFit();
     scheduleSave();
-    setStatus('已撤销，正在保存…', 'saving');
   } finally { undoInProgress = false; }
 }
 function safeFragment(html) {
@@ -779,8 +770,7 @@ function updateCardScales() {
 async function openDirection(id) {
   const direction = findDirection(id); if (!direction) return;
   if (activeDirection?.id !== id && !(await saveNow())) return;
-  resetEditorState(direction); renderPaper(); setView('editor'); scheduleFit(); await persistStore(); setStatus('已保存', 'saved');
-}
+  resetEditorState(direction); renderPaper(); setView('editor'); scheduleFit(); await persistStore();}
 function openDirections() { setView('directions'); }
 function openDialog(dialog) { if (!dialog.open) dialog.showModal(); }
 function confirmAction(message, title = '请确认', actionText = '确认') {
@@ -802,8 +792,7 @@ async function createDirection() {
   if (!(await saveNow())) return;
   const direction = makeDirection(name, template.currentDraft.content, template.currentDraft.layout);
   storeState.directions.push(direction); resetEditorState(direction); await persistStore();
-  elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
-}
+  elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit();}
 function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -857,8 +846,7 @@ async function importDirectionFromFile(file, handle = null) {
   await persistStore();
   if (handle) { try { await saveImportHandle(handle); } catch (error) { showToast(`已导入，但记住文件来源失败：${error.message}`, 'error'); } }
   elements.importFile.value = '';
-  renderPaper(); setView('editor'); scheduleFit(); setStatus('已保存', 'saved');
-  showToast(`已导入「${direction.name}」，可开始编辑。`, 'success');
+  renderPaper(); setView('editor'); scheduleFit();  showToast(`已导入「${direction.name}」，可开始编辑。`, 'success');
 }
 
 /**
@@ -915,8 +903,7 @@ async function renameDirection(name) {
   const value = name.trim(); if (value === direction.name) return;
   if (direction.id === activeDirection?.id) pushUndo(true);
   direction.name = value; if (direction.id === activeDirection?.id) elements.title.textContent = value;
-  await persistStore(); if (currentView === 'directions') renderDirections(); setStatus('已保存', 'saved');
-}
+  await persistStore(); if (currentView === 'directions') renderDirections();}
 async function deleteDirection(id) {
   if (storeState.directions.length <= 1) { showToast('至少要保留一份简历方向。', 'error'); return; }
   const direction = findDirection(id); if (!direction) return;
@@ -969,7 +956,8 @@ function installEvents() {
     if (event.target.closest('a[data-edit]')) event.preventDefault();
   });
   elements.title.addEventListener('click', () => openRenameDirection(activeDirection?.id));
-  byId('open-directions').addEventListener('click', openDirections);
+  // 方向室入口：⌘F（SPEC P-03/S-07 冻结快捷键）与方向室内的"返回编辑"。
+  // 顶栏按方向 A 设计稿只保留 PDF 一个主动作，不再放"方向室"按钮。
   byId('back-editor').addEventListener('click', () => setView('editor'));
   byId('create-direction').addEventListener('click', openCreateDirection);
   elements.importButton.addEventListener('click', async () => {
@@ -1036,14 +1024,12 @@ async function boot() {
   try {
     await loadStore();
     const direction = findDirection(storeState.lastOpenedDirectionId) || storeState.directions[0];
-    resetEditorState(direction); renderPaper(); setStatus('已保存', 'saved');
-    requestAnimationFrame(() => { applyAutoFit(); updateViewScale(); });
+    resetEditorState(direction); renderPaper();    requestAnimationFrame(() => { applyAutoFit(); updateViewScale(); });
   } catch (error) {
     // 打开失败时必须留一个可用的内存态：storeState 若为 null，
     // 后续"新建方向"会在 storeState.directions.push 上抛 TypeError，
     // 用户就彻底卡死在一个打不开也建不了新简历的状态里。
     if (!storeState) storeState = initialState();
-    setStatus('打开失败', 'error');
     showToast(`简历没有打开，已新建一份空白简历。原因：${error.message}`, 'error');
     const fallback = storeState.directions[0];
     resetEditorState(fallback); renderPaper();

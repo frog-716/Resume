@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "project": "Resume Chrome 侧边栏",
+  "brief": "在 Chrome 侧边栏里编辑多个简历方向并通过 Chrome 打印导出 PDF：A4 纸面是唯一主角，外围界面已定稿为方向 A「纸面工坊 · 极简专业」",
+  "round": "08",
+  "lang": "zh",
+  "nativeViewport": "720x900",
+  "candidates": [
+    {
+      "id": "a",
+      "name": "纸面工坊 · 极简专业",
+      "concept": "让 A4 纸是整间屋子里唯一的主角，其余一切像一张收拾干净的灰卡纸工作台",
+      "typography": "界面苹方 16/13/11px 三档，字重 400 与 600 两档，数字 tabular-nums；纸面苹方＋Times 分轨",
+      "palette": ["#F4F3F1", "#FFFFFF", "#23222A", "#3D5A80", "#3E7C4F"],
+      "traits": ["1px 发丝线分隔，无圆角泡泡", "全站唯一投影给纸面", "墨蓝单一强调色，面积不超过 5%"],
+      "source": "a-paper-bench.html"
+    }
+  ]
+}

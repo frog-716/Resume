@@ -11,8 +11,8 @@ Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。�
 - [产品规格](SPEC.md)：产品行为、功能约束、字号范围与快捷键的唯一维护入口；区分已确认、待确认建议和来源事实。
 - [协作约定](AGENTS.md)：后续agent的阅读与维护规则。
 - [抽离设计讨论](docs/extraction-design.md)：已确定目标、源码调查事实、待回答问题与实施边界。
-- [侧边栏 UI/UX 设计方向](docs/design/sidepanel-ui-directions.md)：外围界面四个风格方向（纸面工坊/便签投递台/暗房灯箱/活字排版间）与共同可用性基线；纸面冻结规则不动，**方向 A 纸面工坊已选定（2026-10-21）**，待完整实现与 SPEC §7 验收。
-- [UI 方向首屏对比页](design-handoff/ui-directions/style-explorer.html)：四个方向的 720×900 首屏实画与并排对比页（`design-handoff/ui-directions/`；round 05 已把纸面换成 v34 真实渲染样并对联系图标做光学归一，**已选定方向 A 纸面工坊**）。
+- [侧边栏 UI/UX 设计说明](docs/design/sidepanel-ui-directions.md)：外围界面已定稿为**方向 A「纸面工坊 · 极简专业」**（墨蓝 #3D5A80 + 灰卡纸底），含色板/字体/组件规则与共同可用性基线；纸面冻结规则不动。其余三个备选方向已于 round 08 移出工作区。待办：弹窗/toast/排序手柄/联系添加菜单/超页边界、动效、SPEC §7 真机验收。
+- [UI 首屏对比页](design-handoff/ui-directions/style-explorer.html)：方向 A 的 720×900 首屏实画与对比页（`design-handoff/ui-directions/`；纸面为 v34 真实渲染抽取源，联系图标容器 9×9px、墨迹含描边最长边齐边界）。
 - [无上下文对抗审查](docs/review/first-version-adversarial.md)：6组待确认建议及审查范围。
 - [自动排版算法对抗审查](docs/review/spacing-auto-layout-algorithms.md)：从页面约束和真实排版出发，对比三种重构方案并给出未定稿的推荐；不构成已确认产品规则。
 - [Gemini间距算法对抗审查](docs/review/gemini-spacing-adversarial-20261016.md)：Gemini独立审查七处候选间距，提出一个共用松紧旋钮方案；含本地复核与不应照抄的项目冲突，不构成已确认产品规则。

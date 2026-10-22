@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="bWE3RERZL4DUeoO5hcuz0K"><head data-page-node-id="2TPEjskmx1nLnha2mg6Xaq">
+<meta charset="utf-8" data-page-node-id="T46SH5I9dqpsI4WX4FmKtP">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="nnBHigbXCEQhFDDBNMVDTS">
+<meta name="color-scheme" content="light" data-page-node-id="jq2SipvTlUihPGr7B5mn6x">
+<title data-page-node-id="jaA7nb7H0EwhHFKSZEGfDZ">方向 A · 纸面工坊</title>
+<style data-page-node-id="Q5qVkp7FUlh8Iex9orrx7f">
+  :root{
+    --bench:#F4F3F1; --surface:#FFFFFF; --ink:#23222A; --ink-soft:#43414C;
+    --secondary:#6E6A75; --line:#E3E1DC; --line-strong:#CFCCC4;
+    --accent:#3D5A80; --accent-hover:#2E4660; --selected:#E9EEF4;
+    --saved:#3E7C4F;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#ECECEF;color:var(--ink);font-family:"PingFang SC",sans-serif;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;display:flex;align-items:flex-start;justify-content:flex-start;min-height:100vh}
+  button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+  .panel{width:720px;height:900px;flex:0 0 auto;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(31,28,25,.10),0 16px 48px rgba(31,28,25,.14)}
+
+  .topbar{flex:0 0 54px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;justify-self:start}
+  .resume-title{font-size:16px;font-weight:600;color:var(--ink);padding:4px 6px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;text-align:left}
+  .resume-title:hover{color:var(--accent);background:#F7F6F4}
+  .save-status{font-size:11px;color:var(--secondary);white-space:nowrap}
+  .save-status[data-state="saved"]{color:var(--saved)}
+  .top-actions{display:flex;align-items:center;gap:8px;justify-self:end}
+  .quiet-button{min-height:34px;padding:0 13px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-soft);font-size:12px;font-weight:600;white-space:nowrap}
+  .quiet-button:hover{border-color:var(--line-strong);background:#FAF9F7}
+  .primary-button{min-height:34px;padding:0 15px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;white-space:nowrap}
+  .primary-button:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+
+  .scroller{flex:1;min-height:0;overflow:auto;display:flex}
+  .stage{margin:auto;padding:16px}
+  .paper-fit{position:relative;width:539.7px;height:763.3px}
+  .paper{position:absolute;top:0;left:0;width:793.7px;height:1122.5px;transform:scale(.68);transform-origin:top left;background:#fff;box-shadow:0 1px 2px rgba(35,34,42,.10),0 12px 32px -8px rgba(35,34,42,.16);font-family:var(--font-zh,'PingFang SC'),sans-serif;color:#191919}
+  .safe-zone{position:absolute;inset:34px;border:1px dashed rgba(61,90,128,.40)}
+  .paper-content{position:absolute;inset:34px}
+
+  /* === v34 纸面排版（由 prototypes/a4-spacing-eight-gaps-demo-v34.html 抽得，光学归一图标） === */
+/* v34 纸面排版精选（变量/字体分轨/section 胶囊/entry 三栏/bullets/contact），已剥离编辑器交互态 */
+/* 注意：本文件只覆盖纸面排版，不动 demo 外壳的 .paper 盒模型与 .paper-content 定位 */
+
+.paper{--font-zh: 'PingFang SC';--font-en: 'Times New Roman';--font-num: 'Times New Roman';--body-pt: 8.87;--entry-pt: 9.37;--date-pt: 9.37;--name-pt: 18;--contact-pt: 8.5;--section-pt: 12}
+.run-zh { font-family: var(--font-zh),sans-serif; }
+.run-en { font-family: var(--font-en),serif; }
+.run-num { font-family: var(--font-num),sans-serif; }
+.identity { text-align: center; margin-bottom: 11.2px; }
+.name { font-size: calc(var(--name-pt)*1pt); font-weight: 700; line-height: 1.25; margin: 0px 0px 6px; }
+.contact-row { display: flex; justify-content: center; align-items: center; gap: 3px 8px; flex-wrap: nowrap; font-size: calc(var(--contact-pt)*1pt); line-height: 1.4; min-height: 1.4em; }
+.contact-row + .contact-row { margin-top: 3px; }
+.contact-item { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; white-space: nowrap; max-width: none; }
+.contact-item [contenteditable] { white-space: nowrap; }
+.contact-icon { width: 13.235px; height: 13.235px; display: inline-block; flex: 0 0 13.235px; color: rgb(85, 85, 85); }
+.github-cat { display: inline-block; width: 13.235px; height: 13.235px; flex: 0 0 13.235px; color: rgb(85, 85, 85); }
+.identity + .section-heading { margin-top: 0px; }
+.section-heading { display: flex; align-items: center; gap: 12px; margin: 10px 0px 5px; }
+.section-heading > span { font-size: calc(var(--section-pt)*1pt); line-height: 1.25; font-weight: 500; background: rgb(66, 66, 66); color: rgb(255, 255, 255); border-left: 4px solid rgb(222, 221, 218); border-radius: 0px 3px 3px 0px; padding: 4px 10px; min-width: 90px; text-align: center; }
+.section-heading::after { content: ""; flex: 1 1 0%; border-top: 1px solid rgb(187, 187, 187); }
+.entry-head { display: grid; grid-template-columns: repeat(3, minmax(0px, 1fr)); gap: 12px; padding: 3px 5px 4px; line-height: 1.4; }
+.entry-head > [data-kind="entry"] { font-size: calc(var(--entry-pt)*1pt); min-width: 0px; overflow-wrap: anywhere; font-weight: 700 !important; }
+.entry-head > [data-kind="entry"] * { font-weight: 700 !important; }
+.entry-head > [data-kind="entry"]:nth-child(2) { text-align: center; }
+.entry-head > [data-kind="date"] { font-size: calc(var(--date-pt)*1pt); text-align: right; min-width: 0px; overflow-wrap: anywhere; font-weight: 400 !important; }
+.entry-head > [data-kind="date"] * { font-weight: 400 !important; }
+.education { grid-template-columns: 18% minmax(0px, 1fr) 18%; }
+.bullets { padding: 0px 0px 0px 17px; margin: 2px 0px; }
+.bullets li { font-size: calc(var(--body-pt)*1pt); line-height: 1.4; margin: 2px 0px; white-space: pre-wrap; }
+.paper [contenteditable] { outline: 0px; border-radius: 2px; }
+.paper [contenteditable]:focus { outline: rgb(175, 147, 208) solid 1px; background: rgb(246, 239, 255); }
+.paper{--bullet-gap: 2px;--section-gap: 10px;--columns: 1fr 1fr 1fr}
+.bullets li { line-height: var(--line-height); margin: var(--bullet-gap) 0; }
+.section-heading { margin-top: var(--section-gap); }
+.entry-head:not(.education) { grid-template-columns: var(--columns); }
+.identity { margin-bottom: 4.5px; }
+.identity + .section-heading { margin-top: 4.5px; }
+.paper{--side-space: 9mm}
+.entry-head { line-height: var(--head-line); align-items: start; }
+.entry-head.two-row:not(.education) { grid-template-columns: 1fr 1fr; }
+.entry-head.two-row:not(.education) > [data-kind="entry"]:first-child { grid-column: 1 / -1; }
+.entry-head.two-row:not(.education) > [data-kind="entry"]:nth-child(2) { text-align: left; }
+.contact-row { flex-wrap: nowrap !important; }
+.entry-head.education { grid-template-columns: repeat(3, minmax(0px, 1fr)); }
+.bullets li:empty { min-height: 1.4em; }
+.paper [data-kind="body"] { white-space: pre-wrap; }
+.entry-head.education { grid-template-columns: 1fr 3fr 1fr; }
+.paper [contenteditable]:focus { outline: rgb(173, 144, 193) solid 1px; background: rgb(250, 245, 253); }
+.bullets li:empty { min-height: 1.4em; }
+.experience { position: relative; }
+.paper li { position: relative; }
+.paper .bullets li { list-style: none; }
+.paper .bullets li::before { content: "•"; position: absolute; left: -13px; user-select: none; pointer-events: none; color: rgb(66, 66, 66); }
+.paper [data-placeholder]:empty::before { content: attr(data-placeholder); color: rgb(187, 187, 187); font-weight: 400; }
+.entry-head [data-placeholder]:empty { min-height: 1.3em; }
+.paper{--gap-6: 7.98px;--gap-7: 5.18px;--gap-8: 3.92px}
+.paper .section-heading { margin-top: var(--section-gap); margin-bottom: 0px; }
+.paper .identity + .section-heading { margin-top: 0px; }
+.paper .bullets { margin: 0px; }
+.paper .bullets li { margin: 0px; }
+.paper .bullets li + li { margin-top: var(--bullet-gap); }
+.paper .entry-head { padding-bottom: var(--gap-8); }
+.paper .experience { display: flow-root; }
+.paper .section-heading + .bullets { margin-top: var(--gap-5); }
+.paper .section-heading + .experience { padding-top: var(--gap-6); }
+.paper .section-heading + .entry-head { padding-top: var(--gap-6); }
+.paper .section-heading + .experience .entry-head { padding-top: 0px; }
+.paper .experience + .experience { padding-top: var(--gap-7); }
+.paper .experience + .experience .entry-head { padding-top: 0px; }
+
+@media print{
+ .paper li.point-selected{outline:none;background:none}
+}
+
+  .view-dock{display:flex;align-items:center;justify-content:center;justify-self:center}
+  .capsule{display:flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+  .capsule button{min-height:30px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600;color:var(--secondary)}
+  .capsule button:hover{background:#F5F4F2;color:var(--ink-soft)}
+  .capsule button[aria-pressed="true"]{background:var(--selected);color:var(--accent)}
+  .capsule .sep{width:1px;height:18px;background:var(--line);margin:0 3px}
+  .capsule .readout{min-width:42px;font-variant-numeric:tabular-nums}
+  .guide-button{display:flex;align-items:center;gap:6px}
+  .dashed-square{width:13px;height:12px;border:1.5px dashed var(--accent);display:inline-block}
+</style>
+<style id="__dm_no_drag_style__" data-page-node-id="HDFMpvdq4RdiF1EpnqRriL">* { -webkit-user-drag: none !important; }</style><style id="__dm_bindable_badge_style__" data-page-node-id="W0pi1YdETOK6TOK19gdbbr">[data-sp-bindable="database"]{outline:1px dashed #0088ff;outline-offset:2px;border-radius:4px;}[data-sp-bindable="database"] *{pointer-events:none !important;transition:none !important;animation:none !important;}[data-sp-bindable="database"]{transition:none !important;animation:none !important;}</style></head>
+<body data-page-node-id="kKJSlfGr56L1kKJeCF51iY" style="">
+<div class="panel" data-page-node-id="HSSNhkksAGwTukqG8QDpWS">
+  <header class="topbar" data-page-node-id="KHx6orf3RowhxA6OcA9GkG">
+    <div class="brand" data-page-node-id="i81bP7VSFZv3pN7KBkLkkZ">
+      <button class="resume-title" type="button" data-page-node-id="YK4SGyog5r5JysfOKh7CTD">产品设计 · 电商方向</button>
+      
+    </div>
+    <div class="view-dock" data-page-node-id="ShRLTqnUWpXk1BMx7YcCJX">
+      <div class="capsule" role="group" aria-label="纸张缩放" data-page-node-id="qgPBJJsz1TZanAk0pjrYKt">
+        <button type="button" aria-label="缩小" data-page-node-id="0HOzJUHx0zZppYDXVt4vMz">−</button>
+        <button type="button" class="readout" title="点击重置为整页" data-page-node-id="dD7yoJBVyDBY19TLjYMWG7">整页</button>
+        <button type="button" aria-label="放大" data-page-node-id="8TZaCPOodOAeTV4OEOq3VE">＋</button>
+        <span class="sep" data-page-node-id="lHMu1lHjgT6ZAewlivwABH"></span>
+        <button type="button" class="guide-button" aria-pressed="true" data-page-node-id="1mMqwmjd4YBgELhQ3BsBdy"><span class="dashed-square" data-page-node-id="L7MtA8XfLUyvswCDAxqEXd"></span>虚线框</button>
+      </div>
+    </div>
+    <div class="top-actions" data-page-node-id="fWGsj5D0GhxPToLAGo0o9z">
+      
+      <button class="primary-button" type="button" data-page-node-id="v17xx0CBgIrOiUVFKKaRdM" style="white-space: pre-wrap; font-size: 16px; font-weight: 700; font-style: normal; text-decoration-line: none; text-align: center; color: rgb(255, 255, 255);">PDF​</button>
+    </div>
+  </header>
+
+  <main class="scroller" data-page-node-id="6EKYlZHYqhL0HNlMiHAiTJ">
+    <div class="stage" data-page-node-id="wmzRbEx7my73to0UUb3kGL">
+      <div class="paper-fit" data-page-node-id="tOPNipioxhvIoGoygexLFp">
+        <article class="paper" aria-label="简历编辑稿" data-page-node-id="DJC28szFf11tNPykn7rwKg">
+          <div class="safe-zone" aria-hidden="true" data-page-node-id="kkDYyYuESuIxjuxtbqA6fV"></div>
+          <div class="paper-content">
+            <div class="identity"><h2 class="name" data-kind="name"><span class="run-zh">林舟 · 虚构样稿</span></h2><div class="contact-row" id="identity-row" data-kind="contact"><span class="contact-item"><svg class="contact-icon" viewBox="1.201 1.100 21.728 21.728" role="img" aria-label="电话"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span data-kind="contact"><span class="run-num">13800000000</span></span></span><span>｜</span><span class="contact-item"><svg class="contact-icon" viewBox="2.100 2.100 19.800 19.800" role="img" aria-label="邮箱"><path d="M3 5.5h18v13H3z M3.5 6.2 12 12.5l8.5-6.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span data-kind="contact"><span class="run-en">linzhou@example.com</span></span></span><span>｜</span><span class="contact-item"><svg class="contact-icon" viewBox="-0.120 1.140 22.440 22.440" role="img" aria-label="微信"><path d="M8.5 6.2c-3.1 0-5.7 2-5.7 4.6 0 1.5.8 2.8 2.2 3.7l-.6 2 2.3-1.2c.6.2 1.2.3 1.8.3h.5c-.1-.4-.2-.8-.2-1.2 0-2.7 2.7-4.9 6-4.9h.5c-.2-1.9-2.3-3.3-4.8-3.3H8.5Zm6.6 4.7c-2.5 0-4.6 1.5-4.6 3.4s2.1 3.4 4.6 3.4c.5 0 1-.1 1.5-.2l1.8.9-.5-1.5c1.1-.6 1.8-1.5 1.8-2.6 0-1.9-2.1-3.4-4.6-3.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(-2.4 -2.4) scale(1.2)"></path></svg><span data-kind="contact"><span class="run-en">linzhou_work</span></span></span></div><div class="contact-row" id="link-row" data-kind="contact"><span id="github-item" class="contact-item"><svg class="github-cat" role="img" aria-label="GitHub白猫" viewBox="0.000 -0.197 16.000 16.000" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg><span data-kind="contact"><span class="run-en">https://github.com/example-research</span></span></span><span id="link-separator">｜</span><span id="site-item" class="contact-item"><svg class="contact-icon" viewBox="2.097 2.098 19.803 19.803" role="img" aria-label="个人网站"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M3 12h18 M12 3c-5 5-5 13 0 18 M12 3c5 5 5 13 0 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span data-kind="contact"><span class="run-en">https://www.example-portfolio.com</span></span></span></div><div id="contact-add-menu" class="contact-add-menu" aria-label="添加可选联系方式"><button data-add-link="github" hidden="">＋ GitHub</button><button data-add-link="site" hidden="">＋ 个人网页</button></div></div><div class="section-heading"><span data-kind="section"><span class="run-zh">专业技能</span></span></div><ul class="bullets"><li data-kind="body"><span class="run-zh">经营分析：围绕订单、销售额、转化与退款梳理指标口径，按渠道和商品拆解变化；把数据结论与实际业务反馈对照，整理下一步需要核查的问题。</span></li><li data-kind="body"><span class="run-zh">数据工具：使用 </span><span class="run-en">Excel</span><span class="run-zh">、</span><span class="run-en">SQL</span><span class="run-zh">、</span><span class="run-en">Python </span><span class="run-zh">与可视化工具清理数据，维护经营报表；按统一口径核对来源、更新时间和统计范围，保证每次复盘能够复现。</span></li><li data-kind="body"><span class="run-zh">自动化：将重复取数、报表整理与通知流程拆成清晰步骤，设置异常提醒与人工核对节点；持续记录问题并调整流程，减少重复操作与遗漏。</span></li><li data-kind="body"><span class="run-zh">沟通协作：整理业务需求与优先级，和运营、设计及财务确认交付标准；用简洁文档说明数据变化、实现结果及仍需跟进的问题。</span></li></ul><div class="section-heading"><span data-kind="section"><span class="run-zh">工作经历</span></span></div><div class="experience" data-section="work"><div class="entry-head "><span data-kind="entry"><span class="run-zh">远景科技 · 虚构公司</span></span><span data-kind="entry"><span class="run-zh">数据与运营助理</span></span><span data-kind="date"><span class="run-num">2024.06 </span><span class="run-zh">—</span><span class="run-num"> 2025.08</span></span></div><ul class="bullets"><li data-kind="body"><span class="run-zh">经营复盘：整理多渠道日常经营数据并输出阶段报告，围绕商品、流量、转化与退款定位变化；对照业务记录提出核查方向，向团队汇报关键指标和待办事项。</span></li><li data-kind="body"><span class="run-zh">内部提效：收集多个业务小组的重复工作，明确输入、输出与异常处理方式；建立可执行的流程说明并组织试用，根据实际反馈迭代操作步骤和检查清单。</span></li><li data-kind="body"><span class="run-zh">自动化交付：把固定报表的取数、清洗和汇总串成可重复流程，保留人工确认环节；遇到数据缺失或任务失败时提示具体步骤，支持局部重跑与结果核对。</span></li><li data-kind="body"><span class="run-zh">数据建设：统一基础字段、统计口径和数据更新时间，维护权限及质量检查；把常用结果组织成可读看板，方便各业务负责人查看趋势并追踪问题处理。</span></li><li data-kind="body"><span class="run-zh">业务支持：配合商品信息维护、活动准备与库存检查，把发现的问题记录为明确待办；按约定时间回访处理结果，持续完善日常检查流程。</span></li></ul></div><div class="section-heading"><span data-kind="section"><span class="run-zh">项目经历</span></span></div><div class="experience" data-section="project"><div class="entry-head "><span data-kind="entry"><span class="run-zh">跨部门经营数据分析与报表自动化实践平台落地项目</span></span><span data-kind="entry"><span class="run-zh">数据与流程设计</span></span><span data-kind="date"><span class="run-num">2025.03 </span><span class="run-zh">—</span><span class="run-num"> 2025.08</span></span></div><ul class="bullets"><li data-kind="body"><span class="run-zh">流程梳理：围绕业务目标整理数据需求，区分原始记录、统一指标与展示结果；把输入条件和边界写清楚，减少报表之间因口径不同造成的误解。</span></li><li data-kind="body"><span class="run-zh">数据整理：清洗多来源经营记录，维护一致的商品和渠道维度，核对重复、缺失与异常值；按批次保存处理结果，让问题能够定位到具体来源。</span></li><li data-kind="body"><span class="run-zh">展示交付：把关键趋势和结构变化整理到同一页面，提供必要的筛选和对照；结合使用反馈调整图表与字段顺序，帮助团队快速定位讨论重点。</span></li></ul></div><div class="experience" data-section="project"><div class="entry-head "><span data-kind="entry"><span class="run-zh">信息归集与日报流程</span></span><span data-kind="entry"><span class="run-zh">流程搭建与验证</span></span><span data-kind="date"><span class="run-num">2024.11 </span><span class="run-zh">—</span><span class="run-num"> 2025.02</span></span></div><ul class="bullets"><li data-kind="body"><span class="run-zh">分层设计：将信息采集、结构整理和结果展示分开，保留每次处理的来源与时间；让上游格式变化只影响对应步骤，避免整条流程重复重写。</span></li><li data-kind="body"><span class="run-zh">日报输出：把业务进展、关键问题与明确待办分类整理，保留必要的原文依据；用简洁格式呈现结果，帮助团队减少重复翻阅分散消息的时间。</span></li><li data-kind="body"><span class="run-zh">阶段复盘：汇总日报中的长期问题与重复事项，对照处理记录整理趋势；区分已解决、待跟进和需要进一步确认的内容，为下一轮工作提供参考。</span></li></ul></div><div class="experience" data-section="project"><div class="entry-head "><span data-kind="entry"><span class="run-zh">本地知识与资料整理工具</span></span><span data-kind="entry"><span class="run-zh">界面与产品验证</span></span><span data-kind="date"><span class="run-num">2024.06 </span><span class="run-zh">—</span><span class="run-num"> 2024.10</span></span></div><ul class="bullets"><li data-kind="body"><span class="run-zh">资料组织：将原始素材、整理表达和使用记录区分保存，给每项资料明确的名称、范围和更新时间；避免把一次讨论结果直接当作已经核实的事实。</span></li><li data-kind="body"><span class="run-zh">变更处理：比较新旧内容并展示清晰差异，保留人工决定新增、修改或移除的步骤；记录修改理由，保证历史资料不会随当前编辑而悄悄变化。</span></li><li data-kind="body"><span class="run-zh">使用体验：梳理查找、阅读与修改的主要路径，减少跨页面跳转；提供明确的保存状态与失败提示，让使用者知道哪些内容已经正式保留。</span></li></ul></div><div class="section-heading"><span data-kind="section"><span class="run-zh">教育背景</span></span></div><div class="entry-head education"><span data-kind="entry"><span class="run-zh">示例大学</span></span><span data-kind="entry"><span class="run-zh">信息工程 · 虚构专业</span></span><span data-kind="date"><span class="run-num">2020 </span><span class="run-zh">—</span><span class="run-num"> 2024</span></span></div><ul class="bullets"><li data-kind="body"><span class="run-zh">学习经历：课程覆盖数据分析、软件基础、系统设计与项目实践，结合课程任务完成数据整理和结果展示。</span></li><li data-kind="body"><span class="run-zh">项目实践：在团队项目中承担资料整理、原型搭建与结果验证，记录过程问题，形成结构清晰的说明文档。</span></li></ul><ul class="bullets" id="extra-bullets"></ul>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+</div>
+
+
+</body></html>
