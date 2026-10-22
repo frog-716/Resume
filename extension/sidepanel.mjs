@@ -1,14 +1,20 @@
 import { fitResumeLayout } from './domain-auto-layout.mjs';
-import { createEmptyResumeContent, validateResumeContent, normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
+import { createEmptyResumeContent, createSampleResumeContent, validateResumeContent, normalizeLinkHref, repairResumeContent, SECTION_ORDER } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
 import { supportsFileSystemAccess, pickImportFile, saveImportHandle, loadImportSource, readTextFromHandle } from './import-source.mjs';
 
 const PAPER_WIDTH_PX = 793.7;
 const PAPER_HEIGHT_PX = 1122.5;
 const STORE_KEY = 'resume-sidepanel-store-v1';
+const UNREADABLE_BACKUP_KEY = `${STORE_KEY}-unreadable-backup`;
 const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
 const SECTION_LABELS = { skills: '专业技能', work: '工作经历', projects: '项目经历', education: '教育背景' };
 const COLUMN_PLACEHOLDERS = ['单位 / 项目', '岗位 / 职责', '日期'];
+const SECTION_TYPES = new Set(SECTION_ORDER);
+const REQUIRED_FONTS = [
+  { family: '"PingFang SC"', sample: '简历', role: '中文字体（苹方）' },
+  { family: '"Times New Roman"', sample: 'Resume', role: '英文与数字字体（Times New Roman）' },
+];
 
 const byId = (id) => document.getElementById(id);
 const elements = {
@@ -40,10 +46,12 @@ let layout = null;
 let currentView = 'editor';
 let viewMode = 'fit';
 let zoomFactor = 1;
+let currentFitBase = 1;
 let showGuide = true;
 let currentPaperScale = 1;
 let currentOverflowPx = 0;
 let exportBlockedReason = '';
+let fontMissingReason = '';
 let fitFrame = 0;
 let saveTimer = null;
 let saveInFlight = null;
@@ -100,7 +108,7 @@ function makeDirection(name, content = createEmptyResumeContent(), currentLayout
   };
 }
 function initialState() {
-  const direction = makeDirection('我的简历');
+  const direction = makeDirection('我的简历', createSampleResumeContent());
   return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction], lastImport: null };
 }
 function extensionStorageGet(key) {
@@ -117,9 +125,24 @@ function extensionStorageSet(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
   return Promise.resolve();
 }
+// 磁盘上有一份读不懂的存档（schemaVersion 变化、版本回退、被外部改坏）时，
+// 先原样备份再进入空白态。否则接下来的第一次编辑就会用空模板覆盖磁盘，
+// 旧数据静默消失——这正是"导入/保存把用户数据写没了"类事故的标准入口。
+async function backupUnreadableStore(saved) {
+  try {
+    const existing = await extensionStorageGet(UNREADABLE_BACKUP_KEY);
+    // 只保留第一份：重复覆盖会把更早（也更可能真的是用户数据）的副本冲掉。
+    if (existing !== undefined) return;
+    await extensionStorageSet(UNREADABLE_BACKUP_KEY, saved);
+    showToast('读不到已保存的简历数据，已按空白简历打开；原数据已备份到本地存储，可联系开发者找回。', 'error');
+  } catch (error) {
+    showToast(`读不到已保存的简历数据，已按空白简历打开。原因：${error.message}`, 'error');
+  }
+}
 async function loadStore() {
   const saved = await extensionStorageGet(STORE_KEY);
   if (!saved || saved.schemaVersion !== 1 || !Array.isArray(saved.directions)) {
+    if (saved) await backupUnreadableStore(saved);
     storeState = initialState();
     return;
   }
@@ -313,6 +336,7 @@ function createBullet(item, sectionType, editable) {
   li.append(editable ? makeEditable(item.html, `bullet|${sectionType}|${item.id}`, '要点', '', item.align, '要点') : textSpan(item.html, item.align));
   return li;
 }
+// E-06 空列表补充入口。绝对定位、不参与纸面流：不占用排版空间，也不进
 function createBulletList(items, sectionType, editable) {
   const ul = document.createElement('ul');
   ul.className = 'bullet-list';
@@ -334,7 +358,7 @@ function createExperience(entry, sectionType, editable) {
       : textSpan(column.html, column.align));
   });
   block.append(head);
-  if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable));
+  if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable, entry.id));
   return block;
 }
 function createSection(contentSection, editable, isFirst) {
@@ -359,14 +383,16 @@ function createSection(contentSection, editable, isFirst) {
       ? makeEditable(column.html, `column|education||${index}`, `教育信息第${index + 1}栏`, 'entry-field', column.align)
       : textSpan(column.html, column.align)));
     body.append(row, createBulletList(contentSection.bullets, 'education', editable));
-  } else for (const entry of contentSection.entries || []) body.append(createExperience(entry, contentSection.type, editable));
+  } else {
+    for (const entry of contentSection.entries || []) body.append(createExperience(entry, contentSection.type, editable));
+  }
   section.append(body);
   return section;
 }
 function createIdentity(identity, editable) {
   const wrapper = document.createElement('header');
   wrapper.className = 'identity';
-  const name = editable ? makeEditable(identity.name.html, 'name', '姓名', 'person-name', identity.name.align) : textSpan(identity.name.html, identity.name.align);
+  const name = editable ? makeEditable(identity.name.html, 'name', '姓名', 'person-name', identity.name.align, '姓名') : textSpan(identity.name.html, identity.name.align);
   name.classList.add('person-name');
   wrapper.append(name);
   const contactRow = document.createElement('div');
@@ -485,6 +511,10 @@ function applySpacing(bodyPt, slack, spacing) {
   layout = { ...(layout || DEFAULT_LAYOUT), bodyPt, slack, marginsMm: { ...DEFAULT_LAYOUT.marginsMm } };
 }
 function applyAutoFit() {
+  // 方向室视图下纸面容器是 display:none，clientHeight 为 0：此时重算会把
+  // 结果判成"最小字号也放不下"并错误禁用 PDF。切回编辑器时 ResizeObserver
+  // 与 setView 会自然重算，这里直接跳过。
+  if (currentView !== 'editor') return;
   if (!draft || !elements.paperContent.querySelector('.resume-flow')) return;
   const flow = elements.paperContent.querySelector('.resume-flow');
   const available = elements.paperContent.clientHeight;
@@ -502,18 +532,42 @@ function applyAutoFit() {
   contactRows.forEach((row) => row.classList.toggle('overflow', row.scrollWidth > row.clientWidth + 1));
   const contactConflict = contactRows.some((row) => row.classList.contains('overflow'));
   exportBlockedReason = !fit.fits ? '当前内容在最小字号下仍超过一页，请删减文字后再打印。' : contactConflict ? '联系方式超过固定两行的宽度，请修改联系方式。' : '';
-  elements.export.disabled = Boolean(exportBlockedReason);
-  elements.export.title = exportBlockedReason;
+  refreshExportBlock();
   updateViewScale();
   updateSortHandle();
 }
+// L-14：缺失字体必须明确提示，不能默默用替代字体冒充；S-04：字体缺失与
+// 超页、联系冲突一样要暂停打印并说明原因。这里把两类原因合并到同一个
+// 出口，避免"字号适配说能打、字体说不能打"互相覆盖。
+function refreshExportBlock() {
+  const reason = exportBlockedReason || fontMissingReason;
+  elements.export.disabled = Boolean(reason);
+  elements.export.title = reason;
+}
+// 只在系统里真的找不到这两个字族时才报警。document.fonts.check 对已安装的
+// 系统字体返回 true；浏览器不支持 FontFaceSet 时不做判断（不误报）。
+async function checkRequiredFonts() {
+  if (!globalThis.document?.fonts?.check) return;
+  try { await document.fonts.ready; } catch { /* 超时也继续，按当前可用字体判断 */ }
+  const missing = REQUIRED_FONTS.filter((item) => {
+    try { return !document.fonts.check(`12pt ${item.family}`, item.sample); } catch { return false; }
+  });
+  if (!missing.length) return;
+  fontMissingReason = `缺少${missing.map((item) => item.role).join('、')}，PDF 会与屏幕显示不一致。请安装字体后重新加载扩展。`;
+  showToast(`缺少${missing.map((item) => item.role).join('、')}，已暂停 PDF 导出；简历会先用替代字体显示。`, 'error');
+  refreshExportBlock();
+}
 function updateViewScale() {
+  // 方向室视图下纸面不可见（纸面容器尺寸为 0），此时重算会把 fitBase 打到
+  // 下限 25%，顶栏缩放读数显示假值；切回编辑器时 ResizeObserver 会自然重算。
+  if (currentView !== 'editor') return;
   const style = getComputedStyle(elements.paperScroller);
   const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
   const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
   const availableWidth = Math.max(220, elements.paperScroller.clientWidth - horizontalPadding - 8);
   const availableHeight = Math.max(220, elements.paperScroller.clientHeight - verticalPadding - 8);
   const fitBase = Math.min(availableWidth / PAPER_WIDTH_PX, availableHeight / PAPER_HEIGHT_PX, 1);
+  currentFitBase = fitBase;
   const scale = fitBase * zoomFactor;
   currentPaperScale = Math.max(0.25, Math.min(2.5, scale));
   document.documentElement.style.setProperty('--paper-scale', String(currentPaperScale));
@@ -521,8 +575,46 @@ function updateViewScale() {
   document.documentElement.style.setProperty('--paper-height', `${PAPER_HEIGHT_PX}px`);
   elements.paperSpace.style.width = `${PAPER_WIDTH_PX * currentPaperScale}px`;
   elements.paperSpace.style.height = `${(PAPER_HEIGHT_PX + currentOverflowPx) * currentPaperScale}px`;
-  byId('zoom-readout').textContent = zoomFactor === 1 ? '整页' : `${Math.round(currentPaperScale * 100)}%`;
+  // 只显示数字不带 %：读数是"当前真实缩放比例"，不是模式名。
+  // 注意不能加 hidden 守卫：输入框应用时按钮还处于隐藏态，写了看不见，
+  // 但下次显示时必须是新值（否则读数会比实际缩放慢一步）。
+  byId('zoom-readout').textContent = String(Math.round(currentPaperScale * 100));
   updateSortHandle();
+}
+// 步进按"绝对百分点"走：顶栏看到的是 50→52→54。若按 zoomFactor 的 5% 步进，
+// 在 fit 基准 0.5 下每次只跳 2.5 个百分点，手感忽大忽小。
+function nudgeZoom(deltaPoints) {
+  const target = Math.max(0.25, Math.min(2.5, currentPaperScale + deltaPoints / 100));
+  zoomFactor = Number((target / Math.max(currentFitBase, 0.01)).toFixed(4));
+  updateViewScale();
+}
+// 点读数 → 变成可编辑数字框：回车/失焦应用，Esc 取消。
+function showZoomEditor() {
+  const input = byId('zoom-input');
+  input.value = String(Math.round(currentPaperScale * 100));
+  byId('zoom-readout').hidden = true;
+  input.hidden = false;
+  input.focus();
+  input.select();
+}
+function hideZoomEditor(apply) {
+  const input = byId('zoom-input');
+  if (apply && !input.hidden) {
+    const raw = input.value.trim().replace(/[%％\s]/g, '');
+    // L-03 的"整页"：留空回车即回到按可用宽高适配。原实现对空值/非数字
+    // 静默不应用，等于这个已确认的观看档位根本没有入口。
+    if (!raw) { zoomFactor = 1; updateViewScale(); }
+    else {
+      const n = Number.parseFloat(raw);
+      if (Number.isFinite(n)) {
+        const pct = Math.max(25, Math.min(250, n));
+        zoomFactor = Number(((pct / 100) / Math.max(currentFitBase, 0.01)).toFixed(4));
+        updateViewScale();
+      }
+    }
+  }
+  input.hidden = true;
+  byId('zoom-readout').hidden = false;
 }
 function scheduleFit() {
   if (fitFrame) cancelAnimationFrame(fitFrame);
@@ -620,8 +712,17 @@ function addLink(type) {
 function removeLink(type) {
   pushUndo(true); draft.identity.links[type] = null; renderPaper(); scheduleFit(); scheduleSave();
 }
+// 只有正文要点和条目三栏支持对齐：姓名/联系方式/分区标题/链接在纸面上由版面
+// 固定居中（L-11/L-13），text-align 对 inline-flex / inline 元素不产生任何
+// 视觉效果。这些字段上照单全收只会往数据里写一个永不生效的 align，
+// 看起来像"按了快捷键却没反应"，因此明确告知而不静默吞掉。
+const ALIGNABLE_KINDS = new Set(['bullet', 'column']);
 function setFieldAlignment(element, alignment) {
   const value = pathToValue(element.dataset.edit);
+  if (!ALIGNABLE_KINDS.has(element.dataset.edit.split('|')[0])) {
+    showToast('姓名、联系方式、分区标题与链接按版面固定居中，不支持对齐调整。');
+    return;
+  }
   const target = element.closest('.bullet') || element;
   if (getComputedStyle(target).textAlign === alignment) return;
   pushUndo(true); target.style.textAlign = alignment; element.style.textAlign = alignment;
@@ -634,9 +735,19 @@ function onEditorKeydown(event) {
   const parts = element.dataset.edit.split('|');
   const kind = parts[0];
   if (event.metaKey && ['i', 'u'].includes(event.key.toLowerCase())) { event.preventDefault(); return; }
+  // 输入法组字期间（isComposing）按 Enter 是"确认候选字"，不是"结束编辑"。
+  // 这时若走下面的 Enter 分支，会 blur/插要点把组字宿主连锅端掉，整段候选
+  // 丢失（违反 E-04：组字期间不丢字）。候选确认由 compositionend 收尾。
+  if (event.isComposing) return;
   if (event.key === 'Enter') {
     event.preventDefault();
-    if (kind === 'bullet' && event.shiftKey) { document.execCommand('insertLineBreak'); return; }
+    if (event.shiftKey) {
+      // E-02：Shift+Enter 只在正文要点内换行；分区标题、教育三栏、工作/项目
+      // 三栏、姓名、联系方式与链接一律"不插入换行且不执行额外操作"——
+      // 既不新建经历也不 blur。
+      if (kind === 'bullet') document.execCommand('insertLineBreak');
+      return;
+    }
     if (kind === 'bullet') { addBulletAfter(element); return; }
     if (kind === 'column' && ['work', 'projects'].includes(parts[1])) { addExperienceAfter(parts[1], parts[2]); return; }
     element.blur(); return;
@@ -648,16 +759,54 @@ function onEditorKeydown(event) {
   if (event.metaKey && !event.shiftKey && event.key === 'ArrowLeft') { event.preventDefault(); setFieldAlignment(element, 'left'); }
   if (event.metaKey && !event.shiftKey && event.key === 'ArrowRight') { event.preventDefault(); setFieldAlignment(element, 'right'); }
   if (event.metaKey && !event.shiftKey && event.key === 'ArrowDown') { event.preventDefault(); setFieldAlignment(element, 'center'); }
-  if (event.metaKey && event.key.toLowerCase() === 'b' && kind === 'bullet') { event.preventDefault(); document.execCommand('bold'); updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); }
+  if (event.metaKey && event.key.toLowerCase() === 'b') {
+    // E-01 只允许"正文选区可加粗"；L-10 又要求条目标题/日期固定字重。
+    // 其余字段（分区标题、三栏、姓名、联系方式、链接）一律抑制原生加粗：
+    // styleWithCSS=false 下 Chrome 会插入 <b> 并原样落库，把不允许加粗的
+    // 字段污染成带标记的数据（且日期栏还被 CSS 强制 400，视觉上根本看不出来）。
+    event.preventDefault();
+    if (kind !== 'bullet') return;
+    document.execCommand('bold'); updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave();
+  }
+}
+// 把 text/html 转成纯文本：块级元素的边界变成换行，实体由 DOM 自动解码
+// （正则版会把 &amp; 原样留下，粘出去就是字面量 "&amp;"）。行首/行尾不补
+// 额外空行，避免"粘两段变三条要点（含一条空）"。
+function htmlToPlainText(html) {
+  const source = document.createElement('template');
+  source.innerHTML = String(html || '');
+  const BLOCK_TAGS = new Set(['p', 'div', 'li', 'tr', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'table', 'section', 'article', 'blockquote', 'pre']);
+  const lines = [];
+  let current = '';
+  const flush = () => { lines.push(current); current = ''; };
+  const walk = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) { current += node.nodeValue || ''; return; }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') { flush(); return; }
+    const block = BLOCK_TAGS.has(tag);
+    if (block && current) flush();
+    Array.from(node.childNodes).forEach(walk);
+    if (block) flush();
+  };
+  Array.from(source.content.childNodes).forEach(walk);
+  flush();
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  return lines.join('\n');
 }
 function onPaste(event) {
   const element = event.target.closest('[data-edit]');
   if (!element || !elements.paperContent.contains(element)) return;
   event.preventDefault();
-  const raw = event.clipboardData.getData('text/plain') || event.clipboardData.getData('text/html').replace(/<br\s*\/?\s*>|<\/(p|div|li)>/gi, '\n').replace(/<[^>]*>/g, '');
+  const html = event.clipboardData.getData('text/html');
+  // E-03：只粘文字。text/plain 拿不到时（少数网页不提供）才从 text/html 提文字。
+  const raw = event.clipboardData.getData('text/plain') || (html ? htmlToPlainText(html) : '');
   const parts = element.dataset.edit.split('|');
   if (parts[0] === 'bullet') {
     const lines = raw.replace(/\r/g, '').split('\n');
+    // 剪贴板末尾的换行（复制时多带了一个 \n）会凭空多建一条空要点，
+    // 尾部空行一律剥掉。
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
     const first = lines.shift() || '';
     document.execCommand('insertText', false, first);
     updateContentFromElement(element);
@@ -681,6 +830,14 @@ function onCompositionStart() {
   composing = true;
 }
 function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); } }
+// 取消组字（候选框按 Esc / 焦点被移走 / 输入目标变更）不会派发 compositionend。
+// 不在这里收尾，composing 会永久卡在 true：onInput 从此直接 return，
+// 用户之后打的每一个字都不落盘，关掉侧边栏即全部丢失。
+function onCompositionCancel(event) {
+  composing = false;
+  const element = event.target.closest('[data-edit]');
+  if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); }
+}
 function onInput(event) { const element = event.target.closest('[data-edit]'); if (!element || composing) return; updateContentFromElement(element); scheduleFit(); scheduleSave(); }
 function onBeforeInput(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) pushUndo(false); }
 function onFocusIn(event) { if (event.target.closest('[data-edit]')) updateCurrentSortSelection(); }
@@ -692,17 +849,46 @@ function installDrag() {
     const list = item?.parentElement;
     if (!item || !list) return;
     event.preventDefault();
-    dragState = { item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false };
-    item.classList.add('dragging'); elements.sortHandle.classList.add('is-dragging');
+    const rect = item.getBoundingClientRect();
+    // 拖动期不实时搬动真实条目：原条目保留占位（visibility:hidden，不脱离布局），
+    // 避免每帧重排整页；视觉上用一个 fixed 克隆体（ghost）跟随指针。
+    item.classList.add('drag-source');
+    const ghost = item.cloneNode(true);
+    ghost.classList.remove('drag-source', 'selected', 'dragging');
+    ghost.classList.add('drag-ghost');
+    ghost.style.position = 'fixed';
+    ghost.style.margin = '0';
+    ghost.style.left = `${rect.left}px`;
+    ghost.style.top = `${rect.top}px`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
+    document.body.append(ghost);
+    // 2px 墨蓝插入指示线，标识落点（设计文档 §2 要求）。fixed 定位，移动零重排。
+    const indicator = document.createElement('div');
+    indicator.className = 'sort-indicator';
+    indicator.hidden = true;
+    document.body.append(indicator);
+    dragState = {
+      item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false,
+      pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top,
+      width: rect.width, height: rect.height, ghost, indicator, rafId: 0, lastX: event.clientX, lastY: event.clientY, dropBefore: undefined,
+    };
+    elements.sortHandle.classList.add('is-dragging');
     try { elements.sortHandle.setPointerCapture(event.pointerId); } catch {}
+    updateSortIndicator(event.clientX, event.clientY);
   });
   document.addEventListener('pointermove', (event) => {
     if (!dragState) return;
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.sortable');
-    if (!target || target === dragState.item || target.parentElement !== dragState.list || target.dataset.sortKind !== dragState.kind) return;
-    const rect = target.getBoundingClientRect();
-    dragState.list.insertBefore(dragState.item, event.clientY > rect.top + rect.height / 2 ? target.nextSibling : target);
-    dragState.moved = true; elements.sortHandle.hidden = true;
+    dragState.lastX = event.clientX; dragState.lastY = event.clientY;
+    // rAF 节流：每帧最多重算一次 ghost / 指示线，避免高刷屏上一帧多次重排。
+    if (dragState.rafId) return;
+    dragState.rafId = requestAnimationFrame(() => {
+      dragState.rafId = 0;
+      if (!dragState) return;
+      dragState.ghost.style.left = `${dragState.lastX - dragState.offsetX}px`;
+      dragState.ghost.style.top = `${dragState.lastY - dragState.offsetY}px`;
+      updateSortIndicator(dragState.lastX, dragState.lastY);
+    });
   });
   document.addEventListener('pointerup', finishDrag); document.addEventListener('pointercancel', finishDrag);
   // 悬停即显示手柄：Mac 三指拖动是直接手势，不要求先点进字段聚焦。
@@ -712,28 +898,71 @@ function installDrag() {
     if (item !== sortHover) { sortHover = item; updateSortHandle(); }
   });
   elements.paperContent.addEventListener('mouseout', (event) => {
-    if (sortHover && !event.relatedTarget?.closest?.('.sortable')) { sortHover = null; updateSortHandle(); }
+    if (!sortHover) return;
+    const to = event.relatedTarget;
+    // 指针移向手柄不算离开：手柄是 body 级的 fixed 元素、不在 paperContent 内，
+    // 不这么判的话"悬停显示→移过去按"会形成死循环——手柄永远点不到。
+    if (to && (to === elements.sortHandle || elements.sortHandle.contains(to))) return;
+    if (!to?.closest?.('.sortable')) { sortHover = null; updateSortHandle(); }
   });
+  // 指针离开手柄（且没回到另一行）时收手柄，避免它常驻挡住纸面。
+  elements.sortHandle.addEventListener('mouseleave', () => {
+    if (dragState) return;
+    if (sortHover) { sortHover = null; updateSortHandle(); }
+  });
+}
+// 根据指针 Y 计算落点：遍历同列表的兄弟可排项，找到指针所在行之后的第一项，
+// 插入到它之前；越界则插到末尾。指示线画在该落点（fixed，移动零重排）。
+function updateSortIndicator(clientX, clientY) {
+  const { item, list, indicator, width } = dragState;
+  const siblings = Array.from(list.children).filter((el) => el.classList.contains('sortable') && el !== item);
+  let before = null;
+  for (const sib of siblings) {
+    const r = sib.getBoundingClientRect();
+    if (clientY < r.top + r.height / 2) { before = sib; break; }
+  }
+  let top;
+  let left;
+  if (before) { const r = before.getBoundingClientRect(); top = r.top; left = r.left; }
+  else if (siblings.length) { const last = siblings[siblings.length - 1].getBoundingClientRect(); top = last.bottom; left = last.left; }
+  else { const r = item.getBoundingClientRect(); top = r.bottom; left = r.left; }
+  indicator.hidden = false;
+  indicator.style.top = `${top - 1}px`;
+  indicator.style.left = `${left}px`;
+  indicator.style.width = `${width}px`;
+  dragState.dropBefore = before;
 }
 function finishDrag() {
   if (!dragState) return;
-  const state = dragState; dragState = null; elements.sortHandle.classList.remove('is-dragging'); state.item.classList.remove('dragging');
-  if (!state.moved) { updateSortHandle(); return; }
+  const state = dragState; dragState = null;
+  elements.sortHandle.classList.remove('is-dragging');
+  if (state.rafId) cancelAnimationFrame(state.rafId);
+  state.item.classList.remove('drag-source', 'dragging');
+  state.ghost?.remove();
+  state.indicator?.remove();
+  // 落点是否真的变化：与当前真实相邻关系比较，没变就不记撤销、不重排、不落盘。
+  const changed = state.dropBefore ? state.item.nextElementSibling !== state.dropBefore : state.item !== state.list.lastElementChild;
+  if (!changed) { updateSortHandle(); return; }
   pushUndo(true);
+  if (state.dropBefore) state.list.insertBefore(state.item, state.dropBefore);
+  else state.list.append(state.item);
   const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
   if (state.kind === 'experience') {
     const section = draft.sections.find((item) => item.type === state.section);
-    if (!section?.entries) { renderPaper(); scheduleFit(); scheduleSave(); return; }
+    if (!section?.entries) { scheduleFit(); scheduleSave(); return; }
     const map = new Map(section.entries.map((item) => [item.id, item])); section.entries = ids.map((id) => map.get(id)).filter(Boolean);
   } else {
     // 列表定位不到时安全退出：DOM 顺序已经变了，但草稿不乱写，
     // 重新渲染回到数据里的顺序即可（避免对 null 调用 splice 崩溃）。
     const list = findBulletList(state.section, ids[0]);
-    if (!list) { renderPaper(); scheduleFit(); scheduleSave(); return; }
+    if (!list) { scheduleFit(); scheduleSave(); return; }
     const map = new Map(list.map((item) => [item.id, item]));
     const sorted = ids.map((id) => map.get(id)).filter(Boolean); list.splice(0, list.length, ...sorted);
   }
-  renderPaper(); scheduleFit(); scheduleSave();
+  // 不再 renderPaper()：拖动已通过 insertBefore 把真实 DOM 排好顺序，
+  // 重建整页反而带来一次性大开销（销毁+重建全部 contenteditable）且让界面闪一下。
+  // 只重新适配字号（scheduleFit）并防抖持久化（scheduleSave）。
+  scheduleFit(); scheduleSave();
 }
 function setView(view) {
   currentView = view;
@@ -741,14 +970,21 @@ function setView(view) {
   elements.directionView.classList.toggle('hidden', view !== 'directions');
   if (view !== 'editor') elements.sortHandle.hidden = true;
   if (view === 'directions') { renderDirections(); setTimeout(() => elements.directionSearch.focus(), 40); }
-  else updateSortHandle();
+  else { updateSortHandle(); scheduleFit(); }
 }
 function renderDirections() {
   const query = elements.directionSearch.value.trim().toLowerCase();
-  const directions = storeState.directions.filter((direction) => !query || direction.name.toLowerCase().includes(query));
+  // S-07：方向室按最近编辑时间倒序。搜索只过滤、不改变相对顺序。
+  const ordered = [...storeState.directions].sort((a, b) => directionSortKey(b) - directionSortKey(a));
+  const directions = ordered.filter((direction) => !query || direction.name.toLowerCase().includes(query));
   elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
   renderImportStatus();
   updateCardScales();
+}
+function directionSortKey(direction) {
+  const raw = direction?.currentDraft?.updatedAt || direction?.createdAt || 0;
+  const time = Date.parse(raw);
+  return Number.isNaN(time) ? 0 : time;
 }
 function renderDirectionCard(direction) {
   const article = document.createElement('article'); article.className = 'library-card direction-card'; article.dataset.directionId = direction.id;
@@ -765,13 +1001,31 @@ function renderDirectionCard(direction) {
   const mini = document.createElement('div'); mini.className = 'card-paper'; mini.style.setProperty('--body-size', `${Number(direction.currentDraft.layout?.bodyPt || 10.5).toFixed(2)}pt`); const inner = document.createElement('div'); inner.className = 'paper-content'; buildPaperContent(inner, direction.currentDraft.content, false); mini.append(inner); frame.append(mini); article.append(frame); return article;
 }
 function updateCardScales() {
-  elements.directionGrid.querySelectorAll('.card-paper-frame').forEach((frame) => frame.querySelector('.card-paper')?.style.setProperty('--card-scale', String(frame.clientWidth / PAPER_WIDTH_PX)));
+  if (currentView !== 'directions') return;
+  elements.directionGrid.querySelectorAll('.card-paper-frame').forEach((frame) => {
+    const mini = frame.querySelector('.card-paper');
+    if (!mini) return;
+    const scale = frame.clientWidth / PAPER_WIDTH_PX;
+    mini.style.setProperty('--card-scale', String(scale));
+    // S-07：缩略图要"保留超页内容"。默认 CSS 把相框锁成 210/297 且
+    // overflow:hidden，超过一页的正文会被直接裁掉。这里按内容实际高度
+    // 放开相框高度：短稿不再拖一条空白纸尾，超页稿则整张纸面向下延展。
+    // 用 offsetHeight（布局像素）而不是 getBoundingClientRect：后者被
+    // transform:scale 缩过，量出来的是缩放后的视觉高度。
+    const flow = mini.querySelector('.resume-flow');
+    if (!flow) return;
+    const paperPaddingPx = 2 * (9 / 25.4) * 96; // 上下各 9mm
+    const naturalHeight = paperPaddingPx + flow.offsetHeight + 2;
+    mini.style.height = `${naturalHeight.toFixed(2)}px`;
+    frame.style.aspectRatio = 'auto';
+    frame.style.height = `${(naturalHeight * scale).toFixed(2)}px`;
+  });
 }
 async function openDirection(id) {
   const direction = findDirection(id); if (!direction) return;
   if (activeDirection?.id !== id && !(await saveNow())) return;
   resetEditorState(direction); renderPaper(); setView('editor'); scheduleFit(); await persistStore();}
-function openDirections() { setView('directions'); }
+function toggleDirections() { setView(currentView === 'directions' ? 'editor' : 'directions'); }
 function openDialog(dialog) { if (!dialog.open) dialog.showModal(); }
 function confirmAction(message, title = '请确认', actionText = '确认') {
   elements.confirmTitle.textContent = title; elements.confirmMessage.textContent = message; elements.confirmAction.textContent = actionText; openDialog(elements.confirmDialog);
@@ -782,15 +1036,25 @@ function confirmAction(message, title = '请确认', actionText = '确认') {
 }
 function openCreateDirection() {
   elements.directionName.value = '';
-  elements.directionTemplate.replaceChildren(...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
+  // “示例模板”就是毛坯房：预填一份虚构示例（林舟），一来就有内容可改、
+  // Enter 也能续加，而不是给你一个啥都没有、加不了的空壳。
+  const sampleOption = document.createElement('option');
+  sampleOption.value = '__sample__';
+  sampleOption.textContent = '示例模板（带示例内容 · 毛坯房）';
+  elements.directionTemplate.replaceChildren(sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
   if (activeDirection) elements.directionTemplate.value = activeDirection.id;
   openDialog(elements.directionDialog); elements.directionName.focus();
 }
 async function createDirection() {
-  const name = elements.directionName.value.trim(); const template = findDirection(elements.directionTemplate.value) || activeDirection;
-  if (!name || !template) return;
+  const name = elements.directionName.value.trim();
+  const templateValue = elements.directionTemplate.value;
+  const useSample = templateValue === '__sample__';
+  const template = useSample ? null : (findDirection(templateValue) || activeDirection);
+  if (!name || (!useSample && !template)) return;
   if (!(await saveNow())) return;
-  const direction = makeDirection(name, template.currentDraft.content, template.currentDraft.layout);
+  const content = useSample ? createSampleResumeContent() : template.currentDraft.content;
+  const layout = useSample ? DEFAULT_LAYOUT : template.currentDraft.layout;
+  const direction = makeDirection(name, content, layout);
   storeState.directions.push(direction); resetEditorState(direction); await persistStore();
   elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit();}
 function readFileAsText(file) {
@@ -800,6 +1064,20 @@ function readFileAsText(file) {
     reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
     reader.readAsText(file);
   });
+}
+// 导入前的形态判断：只要"看得出是一份简历"就放行，字段层面的小问题交给
+// repairResumeContent 修（缺失板块、链接缺协议、id 重复都在那里处理）。
+function looksLikeResumeContent(content) {
+  if (!content || typeof content !== 'object' || Array.isArray(content)) return false;
+  const identity = content.identity;
+  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) return false;
+  const name = identity.name;
+  const hasName = (name && typeof name === 'object' && !Array.isArray(name) && typeof name.html === 'string')
+    || (typeof name === 'string' && Boolean(name.trim()));
+  const sections = content.sections;
+  const hasSections = Array.isArray(sections)
+    && sections.some((section) => section && typeof section === 'object' && SECTION_TYPES.has(section.type));
+  return Boolean(hasName && hasSections);
 }
 
 /**
@@ -823,6 +1101,14 @@ async function importDirectionFromFile(file, handle = null) {
   const content = parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.content && typeof parsed.content === 'object'
     ? parsed.content
     : parsed;
+  // 形态闸门：repairResumeContent 会把任何对象修成一份"合法空白简历"，
+  // 于是导入一个数组/字符串/普通对象也会走到"导入成功"——用户以为内容
+  // 进去了，实际得到一份空稿（违反 S-08：不合法时提示原因且不写入）。
+  // 真正的简历文件至少同时具备 identity 与带板块的 sections 两个顶层字段。
+  if (!looksLikeResumeContent(content)) {
+    showToast('导入失败：这个文件不像简历数据（缺少 identity 或 sections 字段），未写入任何内容。', 'error');
+    return;
+  }
   const nameFromWrapper = typeof parsed?.name === 'string' ? parsed.name.trim() : '';
   const nameFromContent = content?.identity?.name?.html ? plainTextFromHtml(content.identity.name.html).trim() : '';
   // 先修复再校验：外部文件常见的轻微不合规（链接缺协议、板块缺字段、
@@ -918,6 +1204,15 @@ async function deleteDirection(id) {
 }
 const PRINT_PAYLOAD_KEY = 'print-payload';
 async function printPdf() {
+  // PDF 是编辑器主动作。方向室视图下纸面是隐藏的（容器尺寸为 0）：此时测量
+  // 只会得到垃圾结果，打印快照也会带上完全错误的布局，而用户看到的其实是
+  // 方向室某张卡片、根本不是将要打印的那一页。先回到编辑页让用户确认内容，
+  // 再点一次 PDF 才真正打印。
+  if (currentView !== 'editor') {
+    setView('editor');
+    showToast('已返回编辑页，请再次点击 PDF 打印当前方向。');
+    return;
+  }
   // Re-measure immediately so a click made during the autosave debounce cannot
   // print a stale layout decision.
   applyAutoFit();
@@ -932,7 +1227,8 @@ async function printPdf() {
     element.removeAttribute('data-edit');
     element.removeAttribute('data-placeholder');
   });
-  paper.querySelectorAll('.safe-zone,.boundary').forEach((element) => element.remove());
+  // 空列表补充入口是编辑态控件，与 safe-zone/boundary 一样不进打印快照。
+  paper.querySelectorAll('.safe-zone,.boundary,.empty-section-hint').forEach((element) => element.remove());
   paper.querySelectorAll('.selected').forEach((element) => element.classList.remove('selected'));
   paper.classList.remove('guide-on', 'is-overflow');
   try {
@@ -949,6 +1245,7 @@ function installEvents() {
   elements.paperContent.addEventListener('input', onInput);
   elements.paperContent.addEventListener('compositionstart', onCompositionStart);
   elements.paperContent.addEventListener('compositionend', onCompositionEnd);
+  elements.paperContent.addEventListener('compositioncancel', onCompositionCancel);
   elements.paperContent.addEventListener('focusin', onFocusIn);
   elements.paperContent.addEventListener('focusout', onFocusOut);
   elements.paperContent.addEventListener('click', (event) => {
@@ -992,9 +1289,21 @@ function installEvents() {
   elements.directionForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'create') { event.preventDefault(); createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); } });
   elements.renameForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'rename') { event.preventDefault(); const value = elements.renameName.value; elements.renameDialog.close('renamed'); renameDirection(value).catch((error) => showToast(`改名失败：${error.message}`, 'error')); } });
   elements.confirmForm.addEventListener('submit', (event) => { if (!event.submitter) { event.preventDefault(); elements.confirmDialog.close('cancel'); } });
-  byId('zoom-out').addEventListener('click', () => { zoomFactor = Math.max(0.5, Number((zoomFactor - 0.05).toFixed(2))); updateViewScale(); });
-  byId('zoom-in').addEventListener('click', () => { zoomFactor = Math.min(2, Number((zoomFactor + 0.05).toFixed(2))); updateViewScale(); });
-  byId('zoom-readout').addEventListener('click', () => { zoomFactor = 1; updateViewScale(); });
+  // 取消按钮是 type="button"（不做表单默认按钮），否则含单文本输入框的表单
+  // 会按 WHATWG 隐式提交规则把第一个提交按钮当成 Enter 默认按钮——而取消键
+  // 排在确认键前面，于是回车等于"取消"（#10）。type="button" 后需自行关弹窗。
+  for (const dialog of [elements.directionDialog, elements.renameDialog, elements.confirmDialog]) {
+    const cancel = dialog.querySelector('[value="cancel"]');
+    if (cancel) cancel.addEventListener('click', () => dialog.close('cancel'));
+  }
+  byId('zoom-out').addEventListener('click', () => nudgeZoom(-2));
+  byId('zoom-in').addEventListener('click', () => nudgeZoom(2));
+  byId('zoom-readout').addEventListener('click', showZoomEditor);
+  byId('zoom-input').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); hideZoomEditor(true); }
+    else if (event.key === 'Escape') { event.preventDefault(); hideZoomEditor(false); }
+  });
+  byId('zoom-input').addEventListener('blur', () => hideZoomEditor(true));
   byId('toggle-guide').addEventListener('click', () => { showGuide = !showGuide; elements.paper.classList.toggle('guide-on', showGuide); byId('toggle-guide').setAttribute('aria-pressed', String(showGuide)); });
   elements.export.addEventListener('click', printPdf);
   window.addEventListener('resize', updateViewScale);
@@ -1008,7 +1317,7 @@ function installEvents() {
   window.addEventListener('keydown', async (event) => {
     const key = event.key.toLowerCase();
     if (event.metaKey && key === 's') { event.preventDefault(); return; }
-    if (event.metaKey && key === 'f') { event.preventDefault(); openDirections(); return; }
+    if ((event.metaKey || event.ctrlKey) && key === 'f' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { event.preventDefault(); toggleDirections(); return; }
     if (event.metaKey && key === 'z') { event.preventDefault(); if (!event.shiftKey) await undo(); return; }
     if (event.metaKey && ['i', 'u'].includes(key)) { event.preventDefault(); return; }
     if (event.key === 'Escape' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { if (currentView === 'directions') setView('editor'); }
@@ -1021,6 +1330,7 @@ function installDragObservers() {
 }
 async function boot() {
   installEvents(); installDragObservers();
+  checkRequiredFonts();
   try {
     await loadStore();
     const direction = findDirection(storeState.lastOpenedDirectionId) || storeState.directions[0];

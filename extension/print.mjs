@@ -23,7 +23,10 @@ function setHint(text, buttons = []) {
 function finishHint() {
   if (finished) return;
   finished = true;
-  setHint('打印完成，可以关闭此标签页。', [['关闭标签页', false, () => window.close()]]);
+  // 不声称"打印完成"：afterprint 在用户点了打印和取消打印两种情况下都会
+  // 触发（S-04：打开打印对话框不等于已生成/已保存 PDF；§7：取消打印不
+  // 声称已保存）。这里只陈述可观察事实。
+  setHint('打印预览已关闭，可以关闭此标签页。', [['关闭标签页', false, () => window.close()]]);
 }
 
 function readPayload() {

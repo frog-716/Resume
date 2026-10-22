@@ -15,7 +15,8 @@
       </div>
       <div class="view-controls" role="group" aria-label="纸张缩放">
         <button class="quiet-button zoom-button" id="zoom-out" type="button" aria-label="缩小">−</button>
-        <button class="quiet-button zoom-readout" id="zoom-readout" type="button" title="点击重置为整页">整页</button>
+        <button class="quiet-button zoom-readout" id="zoom-readout" type="button" title="点击输入比例：100 = 100%，留空 = 整页">100</button>
+        <input class="zoom-input" id="zoom-input" type="text" inputmode="decimal" autocomplete="off" hidden placeholder="整页" aria-label="输入缩放比例，留空为整页">
         <button class="quiet-button zoom-button" id="zoom-in" type="button" aria-label="放大">＋</button>
         <span class="ctl-sep" aria-hidden="true"></span>
         <button class="quiet-button guide-button" id="toggle-guide" type="button" aria-pressed="true"><span class="dashed-square" aria-hidden="true"></span>虚线框</button>
@@ -60,7 +61,7 @@
       <input id="direction-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位">
       <label class="modal-label" for="direction-template">选择模板</label>
       <select id="direction-template" name="template"></select>
-      <div class="modal-actions"><button class="quiet-button" value="cancel">取消</button><button class="primary-button" value="create">创建</button></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="create">创建</button></div>
     </form>
   </dialog>
 
@@ -69,7 +70,7 @@
       <h2>修改方向名称</h2>
       <label class="modal-label" for="rename-name">方向名称</label>
       <input id="rename-name" name="name" maxlength="80" required autocomplete="off">
-      <div class="modal-actions"><button class="quiet-button" value="cancel">取消</button><button class="primary-button" value="rename">保存</button></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="rename">保存</button></div>
     </form>
   </dialog>
 
@@ -77,7 +78,7 @@
     <form method="dialog" id="confirm-form">
       <h2 id="confirm-title">请确认</h2>
       <p id="confirm-message"></p>
-      <div class="modal-actions"><button class="quiet-button" value="cancel">取消</button><button class="primary-button danger-button" value="confirm" id="confirm-action">确认</button></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button danger-button" value="confirm" id="confirm-action">确认</button></div>
     </form>
   </dialog>
 

@@ -54,7 +54,7 @@
 
 **生成引擎：** 材质 × 环境——灰卡纸工作台 + 一叠待打印的 A4 纸。圆角、描边、阴影的尺度都从"纸和台面"推出：控件圆角 8px（纸张的柔），投影只给纸（台面上的实物）。
 
-**骨架与信息层级：** 顶栏一行（左：方向名 + 保存状态；中：缩放胶囊；右：打印 PDF）→ 纸面居中占据全部剩余空间。方向室 = 宽栏双列 A4 缩略图网格（沿用 S-07 已确认结构），卡片即"一张小纸"，无边框、仅投影，右上角一对改名/删除按钮。首屏第一眼必须是纸，不是按钮。
+**骨架与信息层级：** 顶栏一行（左：方向名；中：缩放胶囊；右：打印 PDF）→ 纸面居中占据全部剩余空间。方向室 = 宽栏双列 A4 缩略图网格（沿用 S-07 已确认结构），卡片即"一张小纸"，无边框、仅投影，右上角一对改名/删除按钮。首屏第一眼必须是纸，不是按钮。
 
 > 方向室**没有顶栏按钮**：入口是 ⌘F（SPEC P-03/S-07 冻结快捷键，见 §3 可用性基线第 1 条）。round 06 实装时漏掉了这一步，顶栏保留了"方向室"按钮；round 09 按首屏设计稿 `a-paper-bench.html` 收敛为单个 PDF 主动作。
 
@@ -69,23 +69,23 @@
 | 线 | `#E3E1DC` | 1px 分隔、控件描边 |
 | 强调（墨蓝） | `#3D5A80` | 主动作、选中态、焦点环 |
 | 选中底 | `#E9EEF4` | 列表/控件选中背景 |
-| 成功 | `#3E7C4F` | "已保存" |
+| 成功 | `#3E7C4F` | toast 成功态（如导入完成） |
 | 危险 | `#B3382F` | 删除确认、超页边界 |
 
 **字体规范：** 界面 PingFang SC；方向名 16px/600，正文 13px/400，辅助 11px/400；所有数字（缩放比例、时间戳）`font-variant-numeric: tabular-nums`。字重只有 400/600 两档，层级靠字号与灰度不靠彩色。
 
 **关键元素处理：**
 
-- **顶栏**：白底、底部 1px 发丝线，三栏 `grid 1fr auto 1fr`——左方向名 + 保存状态，中缩放胶囊，右打印 PDF；方向名点击即改（悬停极淡底色 `#F7F6F4` + 文字光标）；保存状态 11px 灰色文字，"已保存"转成功绿，不加图标
+- **顶栏**：白底、底部 1px 发丝线，三栏 `grid minmax(0,1fr) auto minmax(0,1fr)`——左方向名，中缩放胶囊，右打印 PDF；方向名点击即改（悬停极淡底色 `#F7F6F4` + 文字光标）。保存状态流转已按用户要求移除（round 10），自动保存静默进行，失败仅 toast 提示
 - **纸面**：`box-shadow: 0 1px 2px #23222A14, 0 12px 32px -8px #23222A1F`——整站唯一阴影；滚动区即台面底色
-- **缩放胶囊**：白底 1px 边 8px 圆角，`− 整页 ＋`；默认整页、无 100% 档，读数点击即重置；"虚线框"为 SPEC L-12 正文范围参考线开关，与缩放同处一胶囊但不是缩放模式
+- **缩放胶囊**：白底 1px 边 8px 圆角，`− 50% ＋`——读数实时显示当前缩放比例（不是"整页"字样）；默认整页、无 100% 档，读数点击即重置为整页；"虚线框"为 SPEC L-12 正文范围参考线开关，与缩放同处一胶囊但不是缩放模式
 - **方向室卡片**：无边框白卡 + 同款纸面投影；名称 13px/600，时间 10px 次级灰；右上角一对 28×28 描边方钮——铅笔（改名）、垃圾桶（删除），默认中性、悬停改名转墨蓝 / 删除转红
 - **弹窗/toast**：白面 1px 边 8px 圆角；toast 底部居中、墨底白字、无图标
-- **排序手柄**：32px 白底方钮 1px 边，拖动时纸面该条目下沉 1px 并出现 2px 墨蓝插入指示线
+- **排序手柄**：32px 白底方钮 1px 边。拖动时原条目原地保留占位（隐藏不脱离布局，**整页零重排**），一个 fixed 克隆体（ghost）跟随指针，2px 墨蓝插入指示线显示落点；松手才一次性重排并同步数据，不再重建整页——这是为根除"拖动卡顿"做的架构调整（此前每帧实时搬动真实条目 + 松手整页重建，长简历尤其卡）
 - **超页边界**：`#B3382F` 校对红 + "暂停打印"小条
 - **联系添加菜单**：白底 1px 边小浮层，12px 文字，无阴影
 
-**交互流程与反馈：** 保存状态三态淡入淡出（160ms）；⌘F 开合方向室用 120ms 淡入 + 纸面轻微后退感（不改动纸面本身）；新建方向弹窗内命名框自动聚焦；删除确认二次点击；缩放点击即改、读数直接跳字；全部反馈"当场发生"，不加 Toast 噪音。
+**交互流程与反馈：** ⌘F 开合方向室用 120ms 淡入 + 纸面轻微后退感（不改动纸面本身）；新建方向弹窗内命名框自动聚焦；删除确认二次点击；缩放点击即改、读数直接跳字；全部反馈"当场发生"，不加 Toast 噪音。保存失败 toast 带重试入口。
 
 **组件一致性规则：** 圆角三档（控件 8px / 纸面 2px / 胶囊 8px）；描边只有 1px 一种；阴影只允许纸面与卡片；动效全场 120–160ms ease-out；图标 1.5px 圆头线性单色。
 
@@ -109,11 +109,11 @@
 ## 4. 实施顺序与进度
 
 1. **CSS 变量层**——把 `sidepanel.css` 的紫色散点值收敛为语义变量（surface / ink / line / accent / state）。✅ round 06
-2. **顶栏与保存状态**（最高频可见）。✅ round 06（三栏 grid，缩放胶囊居中 offset=0）
+2. **顶栏与缩放控件**（最高频可见）。✅ round 06（三栏 grid，缩放胶囊居中 offset=0）；round 10（保存状态条移除、读数改实时百分比、⌘F 开合）
 3. **纸面背景与投影、视图胶囊**。✅ round 06（缩放去 100%、默认整页、只留 −/＋）
 4. **方向室**（卡片网格 + 改名/删除按钮）。✅ round 06
 5. **弹窗、toast、排序手柄、联系添加菜单、超页边界**——待办（用户按需点名）
-6. **动效与微反馈**（保存状态流转、⌘F 入场、新建/删除重排）——待办
+6. **动效与微反馈**（⌘F 入场、新建/删除重排）——待办
 7. **真机验收**：Chrome 加载 → 侧边栏宽度 320/480/800 三档 → 中文输入 → ⌘F/⌘Z/Esc → 拖拽排序 → 打印 PDF 白底核对 → 对比度自检——待办
 
 ## 5. 待验证事项
@@ -148,10 +148,10 @@ v34 为唯一基准（SPEC L-13 已确认、冻结）。round 01 首屏联系图
 **扩展侧：**
 
 - 主题迁移：`:root` 建立方向 A 语义变量（`--accent #3D5A80` / `--bench #F4F3F1` / `--surface` / `--line #E3E1DC` / `--ink #23222A` / `--selected #E9EEF4` / `--saved` / `--danger #B3382F`），紫色 hex 清零；纸面冻结色（`#424242` 胶囊、`#252525` 正文等）未动
-- 缩放控件：删 `view-segment`（整页|100% 分段）与 `viewMode='actual'` 逻辑，`viewMode` 固定 fit，`zoom-readout` 显示"整页"、点击重置；控件用 `grid 1fr auto 1fr` 入顶栏中列（实测居中偏差 0px）
+- 缩放控件：删 `view-segment`（整页|100% 分段）与 `viewMode='actual'` 逻辑，`viewMode` 固定 fit，`zoom-readout` 点击重置为整页（当时显示"整页"字样，round 10 改为实时百分比）；控件入顶栏中列（实测居中偏差 0px）
 - 编辑/删除按钮：新增 `ICONS.pencil`，卡片右上角为铅笔（改名）+ 垃圾桶（删除）一对 28×28 描边方钮；默认中性（1px `--line` 描边、白底、灰图标），hover 改名→墨蓝、hover 删除→红；点标题或点铅笔均可改名
 
-**验证：** `shoot-extension.cjs`（playwright + 本地 http 渲染 `sidepanel.html`，localStorage 种 3 个方向）实测：顶栏居中 offset=0、readout="整页"、9 个 CSS 变量全部解析、按钮几何 28×28 与 hover 语义色正确；扩展测试 13/13 PASS；`dist-extension/` 重建无残留。
+**验证：** `shoot-extension.cjs`（playwright + 本地 http 渲染 `sidepanel.html`，localStorage 种 3 个方向）实测：顶栏居中 offset=0（当时 readout 显示"整页"，round 10 起为实时百分比）、9 个 CSS 变量全部解析、按钮几何 28×28 与 hover 语义色正确；扩展测试 13/13 PASS；`dist-extension/` 重建无残留。
 
 ## 10. 联系图标定稿 9×9px（round 07 → round 08 修正）
 
@@ -198,6 +198,50 @@ v34 为唯一基准（SPEC L-13 已确认、冻结）。round 01 首屏联系图
 - `design-handoff/ui-directions/shoot-extension.cjs`：`page.click('#open-directions')` → `page.keyboard.press('Meta+f')`，截图脚本顺带验证 ⌘F 入口真实可用；并断言 `.top-actions` 内只剩一个按钮
 - §2「骨架与信息层级」修正为"右：打印 PDF"，并加注说明方向室无顶栏按钮
 
-**入口现状：** ⌘F 开方向室（window 级 keydown 监听，`metaKey && key==='f'`，已存在于 `sidepanel.mjs`）、Esc 或方向室内 ‹ 返回编辑。鼠标侧不再有方向室入口——这是设计稿的明确取舍（"首屏第一眼必须是纸，不是按钮"），SPEC 的快捷键集合为冻结项、不新增。
+**入口现状：** ⌘F 开合方向室（window 级 keydown 监听，`(metaKey||ctrlKey) && key==='f'`，round 10 起为开/关切换，弹窗打开时屏蔽）、Esc 或方向室内 ‹ 返回编辑。鼠标侧不再有方向室入口——这是设计稿的明确取舍（"首屏第一眼必须是纸，不是按钮"），SPEC 的快捷键集合为冻结项、不新增。
 
 **未改动：** 620px 窄屏断点里的 `.top-actions .primary-button{min-width:76px;padding:0 8px}` 保留——设计稿是 720px 固定画布，没有窄屏形态；侧边栏实测宽度可低至 320px，该规则仍需要。
+
+## 13. 前端瘦身与缩放读数、⌘F 开合（round 10）
+
+用户要求：① ⌘F 提示与保存状态流转不再留在前端；② 缩放读数"不需要显示整页，显示缩放比例即可"；③ **⌘F 要能开合并关闭方向室**——此前只能开、不能关回简历。
+
+**改动（`extension/sidepanel.{html,css,mjs}`）：**
+
+- **保存状态流转移除**（承接上一轮）：删 `#save-status` 元素、`setStatus()` 函数与全部 11 处调用、CSS 三处规则。自动保存机制（防抖 + 串行化 + 失败 toast 重试）完全不动，只是不再有状态字。
+- **缩放读数改实时百分比**：`updateViewScale()` 中 `zoom-readout` 恒显示 `${Math.round(currentPaperScale*100)}%`（原来 fit 时显示"整页"字样）；HTML 初始文案同步为 `100%`；点击仍重置为整页比例。
+- **⌘F 开合切换**：新增 `toggleDirections()`（`currentView==='directions' ? 'editor' : 'directions'`）；keydown 监听由"只开"改为切换，并扩展为 `(metaKey||ctrlKey)` 覆盖 Windows/Linux，弹窗打开时屏蔽；死函数 `openDirections()` 删除（顶栏按钮已于 round 09 移除）。
+- **修一个被暴露的真 bug**：改百分比后暴露"进方向室时读数跳 25%"——纸面容器在方向室视图下尺寸为 0，`updateViewScale` 按 220px 兜底把 fitBase 打到下限。加守卫：`currentView !== 'editor'` 时直接 return（切回时 ResizeObserver 自然重算）。
+
+**验证：** playwright 实测 9/9 PASS——⌘F 开/关、方向室期间读数不跳变、Esc 关闭、放大后读数变大、点击读数重置、Ctrl+F 同样可用；无 JS 报错；扩展测试 13/13 PASS；`dist-extension/` 已重建。截图 `shots/ext-topbar.png`（`− 50% ＋`）、`shots/ext-directions.png`（⌘F 打开的方向室，顶栏读数保持 50%）。
+
+## 14. 业务功能全局 review 与真 bug 修复（round 11）
+
+全局 review 锤实 17 处问题（数据丢失级 / SPEC 已确认条款违背级 / 次要），全部修复并用无头 Chrome 端到端回归 15/15 通过、单元测试 37/37 通过、控制台零异常。`dist-extension/` 已重建。
+
+**数据丢失级（必须修）**
+
+- **组字取消后输入不落盘**（E-04）：原只监听 `compositionstart/end`，但浏览器在 Esc / 焦点移走 / 切换输入目标时不派发 `compositionend`，`composing` 永久卡 `true` → `onInput` 此后一律 return，关面板即丢字。新增 `compositioncancel` 监听与 `onCompositionCancel`，正常收尾并落盘。
+- **组字中 Enter 摧毁宿主**（E-04）：`onEditorKeydown` 无 `event.isComposing` 守卫，组字途中回车会 blur/插要点把候选宿主连锅端掉。首行加 `if (event.isComposing) return;`，候选确认交给 `compositionend`。
+
+**SPEC 已确认条款违背级**
+
+- **⌘B 污染不允许加粗的字段**（E-01 / L-10）：原仅对 `bullet` 放行、其余字段 `preventDefault` 但没拦住原生加粗——`styleWithCSS=false` 下 Chrome 仍插 `<b>` 并原样落库。改为所有字段一律 `preventDefault`，仅 `bullet` 执行加粗；分区标题/三栏/姓名/联系方式/链接不再被污染。
+- **Shift+Enter 在工作/项目三栏新建经历**（E-02）：原对 column 也走"插经历"分支。改为 Shift+Enter 只在 `bullet` 内换行，其余字段一律吞掉（不新建经历、不 blur）。
+- **方向室视图下点 PDF 误开打印页**（S-04）：纸面在方向室下 `display:none`、测高为 0，点 PDF 会得到错误布局快照。`printPdf` 加 `currentView!=='editor'` 守卫：先返回编辑页并提示再点一次。
+- **空经历内加不回第一条要点**（E-06，round-10 代码缺陷）：原 `addFirstBullet(sectionType)` 只认 `section.bullets`，而工作/项目的要点挂在 `entry.bullets` → 静默 return，阻断新建经历主路径。提示钮改为 `data-add-bullet="<sectionType>|<entryId>"`，`addFirstBullet(sectionType, entryId)` 按 entryId 定位到经历的 bullets。
+- **导入任意 JSON 修成空白简历 + 假成功**（S-08）：`repairResumeContent` 会把任何对象修成合法空白简历，于是导入数组/字符串/普通对象也走"成功"分支。新增形态闸门 `looksLikeResumeContent`（须同时具备 `identity` 与带版块的 `sections`），不合法时提示原因且不写入。
+- **方向室不按时间倒序**（S-07）：`renderDirections` 原无排序。改为按 `currentDraft.updatedAt` 倒序；搜索只过滤不改相对顺序。
+- **超页缩略图被裁**（S-07 "保留超页内容"）：原 `.card-paper-frame` 锁 `aspect-ratio:210/297;overflow:hidden` 裁掉超页正文。`updateCardScales` 改为按内容实际高度放开相框高度（用 `offsetHeight` 避开 transform 缩放回读）。
+- **新建/改名对话框 Enter=取消**（#10，WHATWG 隐式提交）：含单文本输入框的表单，第一个 submit 按钮（取消）成为 Enter 默认按钮。取消按钮改 `type="button"`（不再做表单默认按钮），并补 click 监听关闭弹窗；Enter 现触发创建/确认。
+- **取消打印仍显示"打印完成"**（S-04 / §7）：`afterprint` 在用户点打印和取消打印两种场景都触发。打印页改为中性文案"打印预览已关闭"。
+- **L-03"整页"一键重置丢失**（round-10 把读数点击改成输入框）：缩放读数留空回车即回到按可用宽高适配（`hideZoomEditor` 空值分支）。
+- **L-14 缺字体提示未实现**：`checkRequiredFonts()` 用 `document.fonts.check` 检测所需字族，缺失时禁用 PDF 并 toast，与超页/联系冲突合并到同一出口。
+
+**次要**
+
+- **HTML 粘贴尾部空行多建空要点 + 实体不解码**（E-03）：`htmlToPlainText` 用 DOM 解析块级边界换行并自动解码实体（不再把 `&amp;` 字面留着），粘贴前剥掉尾随空行。
+- **对齐快捷键对非正文字段静默无效**（L-11/L-13）：`setFieldAlignment` 对姓名/联系方式/分区标题/链接明确 toast 告知"按版面固定居中"，不再吞掉按键。
+- **schemaVersion 不可读时静默覆盖磁盘**（#17 数据丢失隐患）：`loadStore` 遇到 `schemaVersion!==1`/结构损坏时，先 `backupUnreadableStore` 备份原数据再进入空白态，避免首次编辑用空模板覆盖磁盘。
+
+**验证**：无头 Chrome（CDP）+ 种子简历，15 项检查全过——⌘B 四字段拦截与要点放行、Shift+Enter 分流、compositioncancel 落盘、方向室点 PDF 拦截、空经历加要点、HTML 两段粘贴无空行、对话框取消按钮 type、导入非法 JSON 不写入、S-07 倒序；单元测试 37/37；控制台零异常。
