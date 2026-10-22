@@ -132,6 +132,131 @@ export function createSampleResumeContent() {
 }
 
 /**
+ * Normalize a user-typed link into a value that is safe to store and to
+ * render as a clickable link.
+ *
+ * D-03 allows a link row to exist before it is filled in, so an empty value
+ * is a legitimate intermediate state and stays empty. Anything the user
+ * types without a scheme gets `https://` so L-04 keeps the printed link
+ * clickable. Script-bearing schemes are refused outright: the paper renders
+ * the href on an <a>, so `javascript:` would be an injection vector.
+ *
+ * @param {string} raw
+ * @returns {string} '' or an absolute http(s) URL
+ */
+export function normalizeLinkHref(raw) {
+  const text = String(raw ?? "").trim();
+  if (!text) return "";
+  if (/^(?:javascript|data|vbscript|file|blob):/i.test(text)) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (text.startsWith("//")) return `https:${text}`;
+  if (/\s/.test(text)) return "";
+  return `https://${text}`;
+}
+
+/**
+ * Repair a resume content document so it can always be rendered and edited.
+ *
+ * The strict validator exists to protect the data model, but it must never be
+ * used to *discard* a stored direction: dropping it would let the next save
+ * overwrite the user's real content with an empty template. Instead this
+ * function repairs what is safely repairable (missing sections, missing
+ * arrays, missing ids, link schemes) and keeps everything else verbatim.
+ *
+ * @param {unknown} content
+ * @returns {{content: object, repaired: boolean, issues: string[]}}
+ */
+export function repairResumeContent(content) {
+  const issues = [];
+  const base = createEmptyResumeContent();
+  if (!isRecord(content)) {
+    issues.push("content 不是对象，已重置为空白简历。");
+    return { content: base, repaired: true, issues };
+  }
+
+  const out = base;
+  const identity = isRecord(content.identity) ? content.identity : {};
+  const contacts = isRecord(identity.contacts) ? identity.contacts : {};
+  for (const key of ["phone", "email", "wechat"]) {
+    const value = contacts[key];
+    if (isRecord(value)) out.identity.contacts[key] = { html: String(value.html ?? ""), ...(value.align ? { align: value.align } : {}) };
+  }
+  const name = identity.name;
+  if (isRecord(name)) out.identity.name = { html: String(name.html ?? ""), ...(name.align ? { align: name.align } : {}) };
+
+  const links = isRecord(identity.links) ? identity.links : {};
+  for (const [key, expectedType] of Object.entries(OPTIONAL_LINK_TYPES)) {
+    const link = links[key];
+    if (link === null || link === undefined) { out.identity.links[key] = null; continue; }
+    if (!isRecord(link)) {
+      issues.push(`identity.links.${key} 结构不完整，已移除该链接。`);
+      out.identity.links[key] = null;
+      continue;
+    }
+    const rawHref = typeof link.href === "string" ? link.href : "";
+    const href = normalizeLinkHref(rawHref);
+    if (rawHref && !href) issues.push(`identity.links.${key} 的地址无法识别，已清空该链接。`);
+    else if (rawHref && href !== rawHref) issues.push(`identity.links.${key} 的地址已补全协议。`);
+    const label = isRecord(link.label) ? { html: String(link.label.html ?? "") } : { html: "" };
+    out.identity.links[key] = { type: expectedType, href, label, ...(link.align ? { align: link.align } : {}) };
+  }
+
+  const seenIds = new Set();
+  const takeId = (id, fallback) => {
+    let next = typeof id === "string" && id.trim() ? id.trim() : fallback;
+    while (seenIds.has(next)) next = `${next}-${Math.random().toString(36).slice(2, 7)}`;
+    seenIds.add(next);
+    return next;
+  };
+  const repairBullets = (bullets, prefix) => {
+    if (!Array.isArray(bullets)) { if (bullets !== undefined) issues.push(`${prefix}.bullets 不是数组，已置空。`); return []; }
+    return bullets.map((bullet, index) => {
+      if (!isRecord(bullet)) return { id: takeId(null, `${prefix}-bullet-${index + 1}`), html: "" };
+      return {
+        id: takeId(bullet.id, `${prefix}-bullet-${index + 1}`),
+        html: String(bullet.html ?? ""),
+        ...(bullet.align ? { align: bullet.align } : {}),
+      };
+    });
+  };
+  const repairColumns = (columns) => {
+    const list = Array.isArray(columns) ? columns : [];
+    return [0, 1, 2].map((index) => {
+      const column = list[index];
+      if (!isRecord(column)) return { html: "" };
+      return { html: String(column.html ?? ""), ...(column.align ? { align: column.align } : {}) };
+    });
+  };
+
+  const sections = Array.isArray(content.sections) ? content.sections : [];
+  const byType = new Map();
+  for (const section of sections) if (isRecord(section)) byType.set(section.type, section);
+  SECTION_ORDER.forEach((type, index) => {
+    const source = byType.get(type);
+    const target = out.sections[index];
+    if (!source) { issues.push(`缺少 ${type} 板块，已补空板块。`); return; }
+    if (isRecord(source.title)) target.title = { html: String(source.title.html ?? ""), ...(source.title.align ? { align: source.title.align } : {}) };
+    if (type === "skills") target.bullets = repairBullets(source.bullets, `sections[${index}]`);
+    else if (type === "education") {
+      target.columns = repairColumns(source.columns);
+      target.bullets = repairBullets(source.bullets, `sections[${index}]`);
+    } else {
+      const entries = Array.isArray(source.entries) ? source.entries : [];
+      target.entries = entries.map((entry, entryIndex) => {
+        if (!isRecord(entry)) return { id: takeId(null, `${type}-entry-${entryIndex + 1}`), columns: repairColumns([]), bullets: [] };
+        return {
+          id: takeId(entry.id, `${type}-entry-${entryIndex + 1}`),
+          columns: repairColumns(entry.columns),
+          bullets: repairBullets(entry.bullets, `sections[${index}].entries[${entryIndex}]`),
+        };
+      });
+    }
+  });
+
+  return { content: out, repaired: issues.length > 0, issues };
+}
+
+/**
  * Validate a resume content document.
  *
  * Returns `{ valid, errors }`; each error names the field path that needs
@@ -216,7 +341,12 @@ function validateIdentity(identity, errors) {
     if (link.type !== expectedType) {
       errors.push(`${path}.type must be "${expectedType}"; received ${describe(link.type)}.`);
     }
-    if (typeof link.href !== "string" || !isHttpUrl(link.href)) {
+    // 链接未填完时 href 为空串是合法中间态（D-03：填写状态删除键正常删字，
+    // 文字空后再次退格才移除）。一旦填了内容，就必须是可点击的 http(s) 地址
+    // （L-04），否则纸面上会渲染出点不动的链接。
+    if (typeof link.href !== "string") {
+      errors.push(`${path}.href must be a string.`);
+    } else if (link.href !== "" && !isHttpUrl(link.href)) {
       errors.push(`${path}.href must be a valid http or https URL string.`);
     }
     validateAlignment(link.align, `${path}.align`, errors);

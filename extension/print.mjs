@@ -60,6 +60,10 @@ async function main() {
   let payload = null;
   try {
     payload = await readPayload();
+    // 读出来就立刻清掉：payload 里是完整简历 HTML，属于用户隐私数据，
+    // 不能因为用户关掉打印页（或取消打印）就一直留在扩展存储里。
+    // 页面已经把 html 拿在内存中，清掉不影响打印。
+    await clearPayload();
   } catch (error) {
     setHint(`读取打印内容失败：${error.message}`, [['关闭标签页', false, () => window.close()]]);
     return;

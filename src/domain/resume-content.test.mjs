@@ -7,6 +7,8 @@ import {
   EDUCATION_COLUMN_RATIO,
   SECTION_ORDER,
   validateResumeContent,
+  normalizeLinkHref,
+  repairResumeContent,
 } from "./resume-content.mjs";
 
 test("empty content has four fixed sections and owns fresh per-resume data", () => {
@@ -127,4 +129,93 @@ test("alignment choices are stored per editable field and limited to left, cente
   content.sections[0].bullets[0].align = "justify";
   const { errors } = validateResumeContent(content);
   assert.ok(errors.some((error) => error.includes('sections[0].bullets[0].align must be "left", "center", or "right"')));
+});
+
+test("an unfilled link is valid so adding a link never invalidates the whole direction", () => {
+  const content = createEmptyResumeContent();
+  // D-03: the link row exists before it is filled in.
+  content.identity.links.github = { type: "github", href: "", label: { html: "GitHub" } };
+  assert.equal(validateResumeContent(content).valid, true);
+});
+
+test("a filled link must be http or https", () => {
+  const content = createEmptyResumeContent();
+  content.identity.links.github = { type: "github", href: "ftp://example.com", label: { html: "GitHub" } };
+  const { errors } = validateResumeContent(content);
+  assert.ok(errors.some((error) => error.includes("identity.links.github.href must be a valid http or https URL string")));
+});
+
+test("normalizeLinkHref keeps empty, completes the scheme, and refuses script urls", () => {
+  assert.equal(normalizeLinkHref(""), "");
+  assert.equal(normalizeLinkHref("   "), "");
+  assert.equal(normalizeLinkHref("https://github.com/frog"), "https://github.com/frog");
+  assert.equal(normalizeLinkHref("github.com/frog"), "https://github.com/frog");
+  assert.equal(normalizeLinkHref("//github.com/frog"), "https://github.com/frog");
+  assert.equal(normalizeLinkHref("javascript:alert(1)"), "");
+  assert.equal(normalizeLinkHref("data:text/html,<script>"), "");
+  assert.equal(normalizeLinkHref("has space"), "");
+});
+
+test("repairResumeContent keeps a direction usable instead of discarding it", () => {
+  // The scenario that used to destroy data: a link without a scheme made the
+  // whole direction invalid, loadStore dropped it, and the next save wrote an
+  // empty template over the user's real content.
+  const content = createSampleResumeContent();
+  content.identity.links.github = { type: "github", href: "github.com/frog", label: { html: "GitHub" } };
+
+  const { content: repaired, repaired: changed, issues } = repairResumeContent(content);
+  assert.equal(validateResumeContent(repaired).valid, true);
+  assert.equal(changed, true);
+  assert.ok(issues.length > 0);
+  assert.equal(repaired.identity.links.github.href, "https://github.com/frog");
+  // 正文一字未改。
+  assert.equal(repaired.sections[0].bullets[0].html, content.sections[0].bullets[0].html);
+});
+
+test("repairResumeContent fills missing sections, arrays, and ids", () => {
+  const broken = { identity: {}, sections: [{ type: "skills", bullets: [{ html: "无 id 的要点" }] }] };
+  const { content: repaired } = repairResumeContent(broken);
+
+  assert.deepEqual(repaired.sections.map((section) => section.type), SECTION_ORDER);
+  assert.equal(validateResumeContent(repaired).valid, true);
+  assert.ok(repaired.sections[0].bullets[0].id);
+  assert.equal(repaired.sections[0].bullets[0].html, "无 id 的要点");
+  assert.equal(repaired.sections[3].columns.length, 3);
+});
+
+test("repairResumeContent de-duplicates ids so the direction stays valid", () => {
+  const content = createSampleResumeContent();
+  content.sections[0].bullets[1].id = content.sections[0].bullets[0].id;
+
+  const { content: repaired } = repairResumeContent(content);
+  assert.equal(validateResumeContent(repaired).valid, true);
+});
+
+test("repairResumeContent keeps a direction whose links were never filled in", () => {
+  // D-03: 点"＋GitHub"后 href 是空串。这是合法的中间态，
+  // 不能因此让整份简历被判 invalid 而在重开时被丢弃。
+  const content = createEmptyResumeContent();
+  content.identity.links.github = { type: "github", href: "", label: { html: "GitHub" } };
+  const { content: repaired } = repairResumeContent(content);
+  assert.equal(validateResumeContent(repaired).valid, true);
+  assert.equal(repaired.identity.links.github.href, "");
+});
+
+test("repairResumeContent never drops body text when normalizing a link", () => {
+  const content = createSampleResumeContent();
+  const before = content.sections[1].entries[0].bullets.map((bullet) => bullet.html);
+  content.identity.links.github = { type: "github", href: "github.com/frog", label: { html: "GitHub" } };
+
+  const { content: repaired } = repairResumeContent(content);
+  assert.deepEqual(repaired.sections[1].entries[0].bullets.map((bullet) => bullet.html), before);
+  assert.equal(repaired.identity.links.github.href, "https://github.com/frog");
+});
+
+test("repairResumeContent keeps a link the user deliberately blanked", () => {
+  // 用户可能主动把地址清空。修复不能把"空"当成"坏"而丢掉这个链接位。
+  const content = createEmptyResumeContent();
+  content.identity.links.personalWebsite = { type: "personalWebsite", href: "", label: { html: "个人网页" } };
+  const { content: repaired } = repairResumeContent(content);
+  assert.notEqual(repaired.identity.links.personalWebsite, null);
+  assert.equal(repaired.identity.links.personalWebsite.href, "");
 });

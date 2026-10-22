@@ -1,5 +1,5 @@
 import { fitResumeLayout } from './domain-auto-layout.mjs';
-import { createEmptyResumeContent, validateResumeContent } from './domain-resume-content.mjs';
+import { createEmptyResumeContent, validateResumeContent, normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
 import { supportsFileSystemAccess, pickImportFile, saveImportHandle, loadImportSource, readTextFromHandle } from './import-source.mjs';
 
@@ -109,7 +109,12 @@ function initialState() {
 }
 function extensionStorageGet(key) {
   if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.get(key, (value) => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(value[key])));
-  return Promise.resolve(localStorage.getItem(key) ? JSON.parse(localStorage.getItem(key)) : undefined);
+  // 本地存储里的内容可能是被外部改坏的 JSON。解析失败时返回 undefined
+  // （当作"没有存档"），而不是让异常冒泡把整个扩展打开流程打断。
+  try {
+    const raw = localStorage.getItem(key);
+    return Promise.resolve(raw ? JSON.parse(raw) : undefined);
+  } catch { return Promise.resolve(undefined); }
 }
 function extensionStorageSet(key, value) {
   if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.set({ [key]: value }, () => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve()));
@@ -118,17 +123,45 @@ function extensionStorageSet(key, value) {
 }
 async function loadStore() {
   const saved = await extensionStorageGet(STORE_KEY);
-  if (!saved || saved.schemaVersion !== 1 || !Array.isArray(saved.directions) || !saved.directions.length) {
+  if (!saved || saved.schemaVersion !== 1 || !Array.isArray(saved.directions)) {
     storeState = initialState();
-    await extensionStorageSet(STORE_KEY, clone(storeState));
     return;
   }
-  const validDirections = saved.directions.filter((direction) => direction && direction.id && direction.name && direction.currentDraft && validateResumeContent(direction.currentDraft.content).valid);
+  // 结构完整的方向一律保留。校验/修复只用于"内容有问题"的提示，绝不用于丢弃：
+  // 一旦把方向从内存里过滤掉，后续 persistStore 会用内存态覆盖磁盘，
+  // 用户的数据就被静默销毁了（空模板覆盖原方向）。
+  // 因此即使方向缺 id / name / currentDraft，也只做"补齐"而不整条丢弃。
+  const directions = [];
+  const issues = [];
+  for (const raw of saved.directions) {
+    if (!raw || typeof raw !== 'object') { issues.push('有一条方向数据无法读取，已跳过。'); continue; }
+    const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : uid('direction');
+    const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : '未命名简历';
+    const currentDraft = raw.currentDraft && typeof raw.currentDraft === 'object' ? raw.currentDraft : {};
+    const repaired = repairResumeContent(currentDraft.content);
+    if (repaired.repaired) issues.push(`${name}：${repaired.issues[0]}`);
+    directions.push({
+      ...raw,
+      id,
+      name,
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : nowIso(),
+      currentDraft: {
+        ...currentDraft,
+        content: repaired.content,
+        layout: currentDraft.layout && typeof currentDraft.layout === 'object' ? currentDraft.layout : clone(DEFAULT_LAYOUT),
+        updatedAt: typeof currentDraft.updatedAt === 'string' ? currentDraft.updatedAt : nowIso(),
+      },
+    });
+  }
   // lastImport 只是"上次导入来源"的展示与再导入元数据，随 store 原样保留（旧版本无此字段时为 null）。
-  storeState = validDirections.length
-    ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions: validDirections, lastImport: saved.lastImport || null }
+  storeState = directions.length
+    ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions, lastImport: saved.lastImport || null }
     : initialState();
   if (!storeState.directions.some((item) => item.id === storeState.lastOpenedDirectionId)) storeState.lastOpenedDirectionId = storeState.directions[0].id;
+  if (issues.length) showToast(`${issues.length} 个方向的内容已自动修复：${issues.slice(0, 2).join('；')}`, 'error');
+  // 修复后的内容要落盘，否则磁盘上仍是坏数据，下次启动会再修一次、
+  // 再弹一次提示，用户会以为"每次打开都在损坏我的简历"。
+  if (issues.length) await persistStore();
 }
 async function persistStore(snapshot = storeState) {
   await extensionStorageSet(STORE_KEY, clone(snapshot));
@@ -191,7 +224,10 @@ async function saveNow() {
 function pushUndo(force = false) {
   if (!activeDirection || !draft) return;
   const now = Date.now();
-  if (!force && now - undoLastAt < 850) { undoLastAt = now; return; }
+  // 限流只在"距上次快照够久"时生效。注意被限流时不能更新 undoLastAt：
+  // 否则连续输入会把时间戳一直往后推，850ms 窗口永远不到期，
+  // 一次连续输入就只会留下一个快照，撤销粒度完全丧失。
+  if (!force && now - undoLastAt < 850) return;
   undoStack.push({ directionId: activeDirection.id, content: clone(draft), layout: clone(layout), name: activeDirection.name });
   if (undoStack.length > 180) undoStack.shift();
   undoLastAt = now;
@@ -200,9 +236,11 @@ async function undo() {
   if (undoInProgress || !undoStack.length || !activeDirection) return;
   undoInProgress = true;
   try {
-    const previous = undoStack[undoStack.length - 1];
-    if (previous.directionId !== activeDirection.id) return;
-    undoStack.pop();
+    // 撤销栈可能残留其它方向的快照（切方向时旧栈未清干净）。
+    // 丢弃这些跨方向条目再回退，否则栈顶永远不匹配，撤销会被永久卡死。
+    while (undoStack.length && undoStack[undoStack.length - 1].directionId !== activeDirection.id) undoStack.pop();
+    if (!undoStack.length) return;
+    const previous = undoStack.pop();
     draft = clone(previous.content);
     layout = clone(previous.layout);
     activeDirection.name = previous.name;
@@ -363,8 +401,16 @@ function createIdentity(identity, editable) {
     else { icon.className = 'contact-icon'; icon.innerHTML = contactIconSvg('website', '个人网站'); }
     item.append(icon);
     const anchor = document.createElement('a');
-    anchor.href = link.href; anchor.innerHTML = runsHtml(link.href); anchor.style.textAlign = link.align || '';
-    if (editable) { anchor.contentEditable = 'true'; anchor.spellcheck = false; anchor.dataset.edit = type === 'github' ? 'githubHref' : 'websiteHref'; anchor.setAttribute('aria-label', type === 'github' ? 'GitHub 链接' : '个人网页链接'); }
+    // 只渲染 http(s) 链接：扩展页是高权限来源，javascript:/data: 之类必须挡住；
+    // 空 href 是"链接已添加但还没填完"的中间态（D-03），不给可点击目标。
+    const safeHref = /^https?:\/\//i.test(link.href || '') ? link.href : '';
+    if (safeHref) anchor.href = safeHref;
+    anchor.innerHTML = runsHtml(link.href || '');
+    anchor.style.textAlign = link.align || '';
+    if (editable) {
+      anchor.contentEditable = 'true'; anchor.spellcheck = false; anchor.dataset.edit = type === 'github' ? 'githubHref' : 'websiteHref'; anchor.setAttribute('aria-label', type === 'github' ? 'GitHub 链接' : '个人网页链接');
+      if (!link.href) anchor.dataset.placeholder = type === 'github' ? '填写 GitHub 地址' : '填写个人网页地址';
+    }
     item.append(anchor); linksRow.append(item);
   });
   if (linksRow.childNodes.length) wrapper.append(linksRow);
@@ -403,11 +449,18 @@ function pathToValue(key) {
   if (kind === 'title') return draft.sections.find((section) => section.type === a)?.title;
   if (kind === 'githubHref' || kind === 'websiteHref') return draft.identity.links[kind === 'githubHref' ? 'github' : 'personalWebsite'];
   if (kind === 'bullet') {
-    if (a === 'skills') return draft.sections[0].bullets.find((item) => item.id === b);
+    // 要点键统一为 `bullet|<sectionType>|<bulletId>`（见 createBullet）。
+    // bulletId 在整份文档内唯一，因此按板块 + bulletId 定位即可：
+    // skills/education 的要点直接挂在板块上，work/projects 的要点挂在
+    // 某条经历内，需要在该板块的各条经历里找出持有该 bulletId 的那条。
+    if (a === 'skills') return draft.sections.find((item) => item.type === 'skills')?.bullets.find((item) => item.id === b);
     const section = draft.sections.find((item) => item.type === a);
     if (a === 'education') return section?.bullets.find((item) => item.id === b);
-    const entry = section?.entries.find((item) => item.id === b);
-    return entry?.bullets.find((item) => item.id === c);
+    for (const entry of section?.entries || []) {
+      const found = entry.bullets.find((item) => item.id === b);
+      if (found) return found;
+    }
+    return undefined;
   }
   if (kind === 'column' && a === 'education') return draft.sections.find((item) => item.type === 'education')?.columns[Number(c)];
   if (kind === 'column') return draft.sections.find((item) => item.type === a)?.entries.find((item) => item.id === b)?.columns[Number(c)];
@@ -417,8 +470,13 @@ function updateContentFromElement(element) {
   const key = element.dataset.edit;
   if (!key) return;
   const value = pathToValue(key);
-  if (!value) return;
-  if (key === 'githubHref' || key === 'websiteHref') value.href = (element.innerText || '').trim();
+  // 定位不到目标时不能静默返回：否则用户的输入既没保存、界面也没提示，
+  // 看起来像"打了字没反应"。至少要留下可诊断的记录。
+  if (!value) { console.warn('[resume] 无法定位编辑目标，已跳过保存：', key); return; }
+  // 链接输入统一归一化：自动补 https://，拒掉 javascript:/data: 等协议。
+  // 否则用户填 "github.com/x" 会存成非 http(s) 地址，重开时整份简历被判
+  // invalid 而丢弃（见 loadStore）。
+  if (key === 'githubHref' || key === 'websiteHref') value.href = normalizeLinkHref(element.innerText || '');
   else if (Object.hasOwn(value, 'html')) value.html = serializeEditable(element);
   if (element.style.textAlign && Object.hasOwn(value, 'align')) value.align = element.style.textAlign;
 }
@@ -517,11 +575,13 @@ function focusEditable(element, selectAll = false) {
     const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
   }
 }
+// 定位某个要点所属的数组。找不到时返回 null，调用方必须判空后再操作，
+// 否则会出现 "Cannot read properties of null (reading 'splice')" 之类的崩溃。
 function findBulletList(sectionType, bulletId) {
-  if (sectionType === 'skills') return draft.sections[0].bullets;
-  if (sectionType === 'education') return draft.sections.find((section) => section.type === 'education').bullets;
   const section = draft.sections.find((item) => item.type === sectionType);
-  for (const entry of section?.entries || []) if (entry.bullets.some((item) => item.id === bulletId)) return entry.bullets;
+  if (!section) return null;
+  if (sectionType === 'skills' || sectionType === 'education') return Array.isArray(section.bullets) ? section.bullets : null;
+  for (const entry of section.entries || []) if (entry.bullets?.some((item) => item.id === bulletId)) return entry.bullets;
   return null;
 }
 function addBulletAfter(element, initialHtml = '') {
@@ -531,7 +591,9 @@ function addBulletAfter(element, initialHtml = '') {
   if (!list) return;
   pushUndo(true);
   const item = { id: uid(`${sectionType}-bullet`), html: initialHtml };
-  list.splice(Math.max(0, list.findIndex((entry) => entry.id === bulletId) + 1), 0, item);
+  // findIndex 返回 -1（锚点不在列表里）时应追加到末尾，而不是静默插到最前面。
+  const anchorIndex = list.findIndex((entry) => entry.id === bulletId);
+  list.splice(anchorIndex < 0 ? list.length : anchorIndex + 1, 0, item);
   renderPaper(); scheduleFit(); scheduleSave();
   focusEditable(elements.paperContent.querySelector(`[data-edit="bullet|${CSS.escape(sectionType)}|${CSS.escape(item.id)}"]`));
 }
@@ -540,7 +602,8 @@ function addExperienceAfter(sectionType, entryId) {
   if (!section || !['work', 'projects'].includes(sectionType)) return;
   pushUndo(true);
   const item = { id: uid(`${sectionType}-entry`), columns: [{ html: '' }, { html: '' }, { html: '' }], bullets: [] };
-  section.entries.splice(Math.max(0, section.entries.findIndex((entry) => entry.id === entryId) + 1), 0, item);
+  const anchorIndex = section.entries.findIndex((entry) => entry.id === entryId);
+  section.entries.splice(anchorIndex < 0 ? section.entries.length : anchorIndex + 1, 0, item);
   renderPaper(); scheduleFit(); scheduleSave();
   focusEditable(elements.paperContent.querySelector(`[data-edit="column|${CSS.escape(sectionType)}|${CSS.escape(item.id)}|0"]`));
 }
@@ -610,6 +673,8 @@ function onPaste(event) {
     let previousId = parts[2];
     for (const line of lines) {
       const list = findBulletList(parts[1], previousId);
+      // 列表定位不到（数据不完整）时停止追加，避免对 null 调用 splice 崩溃。
+      if (!list) break;
       const item = { id: uid(`${parts[1]}-bullet`), html: escapeHtml(line) };
       list.splice(Math.max(0, list.findIndex((entry) => entry.id === previousId) + 1), 0, item);
       previousId = item.id;
@@ -618,7 +683,12 @@ function onPaste(event) {
   } else { document.execCommand('insertText', false, raw.replace(/\r?\n/g, ' ')); updateContentFromElement(element); }
   normalizeFieldRuns(element); scheduleFit(); scheduleSave();
 }
-function onCompositionStart() { composing = true; }
+function onCompositionStart() {
+  // 输入法组字期间 beforeinput 不会压入撤销快照，若这里也不压，
+  // 整段中文输入就完全没有撤销点（违反 E-05：文字改动可用 ⌘Z 撤销）。
+  if (!composing) pushUndo(true);
+  composing = true;
+}
 function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); } }
 function onInput(event) { const element = event.target.closest('[data-edit]'); if (!element || composing) return; updateContentFromElement(element); scheduleFit(); scheduleSave(); }
 function onBeforeInput(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) pushUndo(false); }
@@ -662,9 +732,14 @@ function finishDrag() {
   const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
   if (state.kind === 'experience') {
     const section = draft.sections.find((item) => item.type === state.section);
+    if (!section?.entries) { renderPaper(); scheduleFit(); scheduleSave(); return; }
     const map = new Map(section.entries.map((item) => [item.id, item])); section.entries = ids.map((id) => map.get(id)).filter(Boolean);
   } else {
-    const list = findBulletList(state.section, ids[0]); const map = new Map(list.map((item) => [item.id, item]));
+    // 列表定位不到时安全退出：DOM 顺序已经变了，但草稿不乱写，
+    // 重新渲染回到数据里的顺序即可（避免对 null 调用 splice 崩溃）。
+    const list = findBulletList(state.section, ids[0]);
+    if (!list) { renderPaper(); scheduleFit(); scheduleSave(); return; }
+    const map = new Map(list.map((item) => [item.id, item]));
     const sorted = ids.map((id) => map.get(id)).filter(Boolean); list.splice(0, list.length, ...sorted);
   }
   renderPaper(); scheduleFit(); scheduleSave();
@@ -761,13 +836,17 @@ async function importDirectionFromFile(file, handle = null) {
     : parsed;
   const nameFromWrapper = typeof parsed?.name === 'string' ? parsed.name.trim() : '';
   const nameFromContent = content?.identity?.name?.html ? plainTextFromHtml(content.identity.name.html).trim() : '';
-  const validation = validateResumeContent(content);
+  // 先修复再校验：外部文件常见的轻微不合规（链接缺协议、板块缺字段、
+  // id 重复、链接地址没填完）应该被自动修好，而不是整份拒绝导入。
+  // 修复过程保留全部正文内容，绝不丢字。
+  const repaired = repairResumeContent(content);
+  const validation = validateResumeContent(repaired.content);
   if (!validation.valid) {
     showToast(`导入失败：简历内容不符合格式。${validation.errors.slice(0, 2).join('；')}`, 'error');
     return;
   }
   if (!(await saveNow())) return;
-  const direction = makeDirection(nameFromWrapper || nameFromContent || '导入的方向', content, DEFAULT_LAYOUT);
+  const direction = makeDirection(nameFromWrapper || nameFromContent || '导入的方向', repaired.content, DEFAULT_LAYOUT);
   storeState.directions.push(direction);
   resetEditorState(direction);
   storeState.lastImport = { fileName: file.name || handle?.name || '未命名文件', importedAt: nowIso(), directionId: direction.id, persisted: Boolean(handle) };
@@ -959,7 +1038,17 @@ async function boot() {
     const direction = findDirection(storeState.lastOpenedDirectionId) || storeState.directions[0];
     resetEditorState(direction); renderPaper(); setStatus('已保存', 'saved');
     requestAnimationFrame(() => { applyAutoFit(); updateViewScale(); });
-  } catch (error) { setStatus('打开失败', 'error'); showToast(`简历没有打开。原因：${error.message}`, 'error'); }
+  } catch (error) {
+    // 打开失败时必须留一个可用的内存态：storeState 若为 null，
+    // 后续"新建方向"会在 storeState.directions.push 上抛 TypeError，
+    // 用户就彻底卡死在一个打不开也建不了新简历的状态里。
+    if (!storeState) storeState = initialState();
+    setStatus('打开失败', 'error');
+    showToast(`简历没有打开，已新建一份空白简历。原因：${error.message}`, 'error');
+    const fallback = storeState.directions[0];
+    resetEditorState(fallback); renderPaper();
+    requestAnimationFrame(() => { applyAutoFit(); updateViewScale(); });
+  }
 }
 
 boot();
