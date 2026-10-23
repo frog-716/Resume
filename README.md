@@ -104,6 +104,10 @@ extension/
 - 面向个人本机使用；建议在本机实际验收中文输入法、Chrome 快捷键、侧边栏宽度与最终打印效果。
 - 每个方向只保留一份自动保存的当前稿，不提供快照 / 历史版本 / 废件箱。
 
+## 📄 License
+
+本项目采用 [MIT License](LICENSE)。
+
 ---
 
 <p align="center"><sub>Resume · A4 résumé in your Chrome side panel</sub></p>
