@@ -1,0 +1,42 @@
+[
+  {
+    "file": "page-create.png",
+    "state": null,
+    "size": "720x900",
+    "zoom": 1,
+    "group": "create",
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "page-search.png",
+    "state": null,
+    "size": "720x900",
+    "zoom": 1,
+    "group": "search",
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "page-rename.png",
+    "state": null,
+    "size": "720x900",
+    "zoom": 1,
+    "group": "rename",
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "page-delete.png",
+    "state": null,
+    "size": "720x900",
+    "zoom": 1,
+    "group": "delete",
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  }
+]

@@ -1,0 +1,39 @@
+[
+  {
+    "file": "motion-end.jpg",
+    "state": "editor",
+    "size": "720x900",
+    "zoom": 1,
+    "issues": [],
+    "frames": {
+      "start": {
+        "file": "motion-start.jpg",
+        "source": "Page.screencastFrame",
+        "timeMs": 121
+      },
+      "mid": {
+        "file": "motion-mid.jpg",
+        "source": "Page.screencastFrame",
+        "timeMs": 206
+      },
+      "end": {
+        "file": "motion-end.jpg",
+        "source": "Page.captureScreenshot",
+        "timeMs": 2513
+      }
+    },
+    "sampling": {
+      "mode": "entry"
+    },
+    "durationMs": 2513,
+    "consistency": {
+      "status": "matched",
+      "reference": "motion-end.jpg",
+      "different": false,
+      "changedPixels": 0,
+      "maxTilePixels": 0,
+      "pixelRatio": 0
+    },
+    "failed": true
+  }
+]

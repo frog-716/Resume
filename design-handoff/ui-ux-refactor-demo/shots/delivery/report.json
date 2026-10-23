@@ -1,0 +1,163 @@
+[
+  {
+    "file": "editor-720x900.png",
+    "state": "editor",
+    "size": "720x900",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "directions-720x900.png",
+    "state": "directions",
+    "size": "720x900",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "editor-390x844.png",
+    "state": "editor",
+    "size": "390x844",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "directions-390x844.png",
+    "state": "directions",
+    "size": "390x844",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "editor-720x900-@2x.png",
+    "state": "editor",
+    "size": "720x900",
+    "zoom": 2,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "editor-390x844-@2x.png",
+    "state": "editor",
+    "size": "390x844",
+    "zoom": 2,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "motion-probe",
+    "state": "editor",
+    "size": "720x900",
+    "zoom": 1,
+    "motion": {
+      "load": {
+        "elements": 3,
+        "loops": 0,
+        "maxMove": 5,
+        "maxSize": 0.064,
+        "maxOpacity": 0.27,
+        "top": [
+          {
+            "el": "article#resume-paper.paper",
+            "move": 5,
+            "size": 0.064,
+            "opacity": 0,
+            "loop": false,
+            "sources": [
+              "js:style",
+              "transition:transform"
+            ]
+          },
+          {
+            "el": "main#editor-view.editor-view.screen",
+            "move": 3,
+            "size": 0,
+            "opacity": 0.27,
+            "loop": false,
+            "sources": [
+              "css:screen-in"
+            ]
+          },
+          {
+            "el": "div#paper-space.paper-space",
+            "move": 5,
+            "size": 0,
+            "opacity": 0,
+            "loop": false,
+            "sources": [
+              "js:style"
+            ]
+          }
+        ]
+      },
+      "hero": {
+        "elements": 0,
+        "loops": 0,
+        "maxMove": 0,
+        "maxSize": 0,
+        "maxOpacity": 0,
+        "top": [],
+        "layers": 0
+      },
+      "scroll": {
+        "elements": 0,
+        "loops": 0,
+        "maxMove": 0,
+        "maxSize": 0,
+        "maxOpacity": 0,
+        "top": [],
+        "scrollable": false
+      }
+    },
+    "issues": []
+  },
+  {
+    "file": "motion-entry-end.jpg",
+    "state": "editor",
+    "size": "720x900",
+    "zoom": 1,
+    "group": "entry",
+    "issues": [
+      "录屏：没装 ffmpeg，只留了 motion-entry-start/mid/end.jpg 三帧"
+    ],
+    "frames": {
+      "start": {
+        "file": "motion-entry-start.jpg",
+        "source": "Page.screencastFrame",
+        "timeMs": 121
+      },
+      "mid": {
+        "file": "motion-entry-mid.jpg",
+        "source": "Page.screencastFrame",
+        "timeMs": 178
+      },
+      "end": {
+        "file": "motion-entry-end.jpg",
+        "source": "Page.captureScreenshot",
+        "timeMs": 2496
+      }
+    },
+    "sampling": {
+      "mode": "entry"
+    },
+    "durationMs": 2496,
+    "consistency": {
+      "status": "matched",
+      "reference": "motion-entry-end.jpg",
+      "different": false,
+      "changedPixels": 0,
+      "maxTilePixels": 0,
+      "pixelRatio": 0
+    },
+    "failed": true
+  }
+]

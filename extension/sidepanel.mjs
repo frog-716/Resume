@@ -1,7 +1,6 @@
 import { fitResumeLayout } from './domain-auto-layout.mjs';
-import { createEmptyResumeContent, createSampleResumeContent, validateResumeContent, normalizeLinkHref, repairResumeContent, SECTION_ORDER } from './domain-resume-content.mjs';
+import { createEmptyResumeContent, createSampleResumeContent, normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
-import { supportsFileSystemAccess, pickImportFile, saveImportHandle, loadImportSource, readTextFromHandle } from './import-source.mjs';
 
 const PAPER_WIDTH_PX = 793.7;
 const PAPER_HEIGHT_PX = 1122.5;
@@ -10,7 +9,6 @@ const UNREADABLE_BACKUP_KEY = `${STORE_KEY}-unreadable-backup`;
 const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
 const SECTION_LABELS = { skills: '专业技能', work: '工作经历', projects: '项目经历', education: '教育背景' };
 const COLUMN_PLACEHOLDERS = ['单位 / 项目', '岗位 / 职责', '日期'];
-const SECTION_TYPES = new Set(SECTION_ORDER);
 const REQUIRED_FONTS = [
   { family: '"PingFang SC"', sample: '简历', role: '中文字体（苹方）' },
   { family: '"Times New Roman"', sample: 'Resume', role: '英文与数字字体（Times New Roman）' },
@@ -26,7 +24,6 @@ const elements = {
   renameForm: byId('rename-form'), renameName: byId('rename-name'), confirmDialog: byId('confirm-dialog'),
   confirmForm: byId('confirm-form'), confirmTitle: byId('confirm-title'), confirmMessage: byId('confirm-message'),
   confirmAction: byId('confirm-action'), toast: byId('toast'), export: byId('export-pdf'), sortHandle: byId('sort-handle'),
-  importButton: byId('import-direction'), importFile: byId('import-file'), importStatus: byId('import-status'),
 };
 
 const ICONS = {
@@ -35,8 +32,6 @@ const ICONS = {
   wechat: 'M8.5 6.2c-3.1 0-5.7 2-5.7 4.6 0 1.5.8 2.8 2.2 3.7l-.6 2 2.3-1.2c.6.2 1.2.3 1.8.3h.5c-.1-.4-.2-.8-.2-1.2 0-2.7 2.7-4.9 6-4.9h.5c-.2-1.9-2.3-3.3-4.8-3.3H8.5Zm6.6 4.7c-2.5 0-4.6 1.5-4.6 3.4s2.1 3.4 4.6 3.4c.5 0 1-.1 1.5-.2l1.8.9-.5-1.5c1.1-.6 1.8-1.5 1.8-2.6 0-1.9-2.1-3.4-4.6-3.4Z',
   website: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M3 12h18 M12 3c-5 5-5 13 0 18 M12 3c5 5 5 13 0 18',
   github: '<svg class="github-cat" role="img" aria-label="GitHub白猫" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>',
-  trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9 7V4.8h6V7m-8.4 0 1 13h8.8l-1-13M10 10.2v6.8m4-6.8v6.8"/></svg>',
-  pencil: '<svg viewBox="0 0 24 24"><path d="M5 19l3-1 9.2-9.2a1.8 1.8 0 0 0-2.5-2.5L5.6 15.4 5 19Z"/><path d="M14.5 6.5l3 3"/></svg>',
 };
 
 let storeState = null;
@@ -109,7 +104,7 @@ function makeDirection(name, content = createEmptyResumeContent(), currentLayout
 }
 function initialState() {
   const direction = makeDirection('我的简历', createSampleResumeContent());
-  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction], lastImport: null };
+  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
 }
 function extensionStorageGet(key) {
   if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.get(key, (value) => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(value[key])));
@@ -172,9 +167,8 @@ async function loadStore() {
       },
     });
   }
-  // lastImport 只是"上次导入来源"的展示与再导入元数据，随 store 原样保留（旧版本无此字段时为 null）。
   storeState = directions.length
-    ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions, lastImport: saved.lastImport || null }
+    ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions }
     : initialState();
   if (!storeState.directions.some((item) => item.id === storeState.lastOpenedDirectionId)) storeState.lastOpenedDirectionId = storeState.directions[0].id;
   if (issues.length) showToast(`${issues.length} 个方向的内容已自动修复：${issues.slice(0, 2).join('；')}`, 'error');
@@ -635,6 +629,23 @@ function updateCurrentSortSelection() {
   }
   updateSortHandle();
 }
+// 手柄尺寸与 CSS 的 .sort-handle 保持一致（只包住鼠标图形，不带白底方框）。
+const SORT_HANDLE_W = 17;
+const SORT_HANDLE_H = 19;
+// 手柄右缘与安全区虚线框之间的极小间隔。
+const SORT_HANDLE_GAP = 3;
+// 安全区（虚线框）是纸面内缩 9mm；按纸宽 210mm 换算成比例，
+// 与当前缩放无关（paperRect 已经是缩放后的尺寸）。
+function sortHandleLeft() {
+  const paperRect = elements.paper.getBoundingClientRect();
+  const safeLeft = paperRect.left + paperRect.width * (9 / 210);
+  // 落在纸面左边距里、虚线框外侧，确保鼠标图形永远不压正文。
+  return Math.max(2, Math.round(safeLeft - SORT_HANDLE_W - SORT_HANDLE_GAP));
+}
+function sortHandleTop(rect) {
+  const centered = rect.top + (rect.height - SORT_HANDLE_H) / 2;
+  return Math.max(2, Math.min(window.innerHeight - SORT_HANDLE_H - 2, centered));
+}
 function updateSortHandle() {
   const handle = elements.sortHandle;
   // 拖动进行中：保持手柄当前可见/隐藏状态，不被焦点竞态（focusout 触发
@@ -644,10 +655,9 @@ function updateSortHandle() {
   const target = elements.paperContent.querySelector('.sortable.selected') || sortHover;
   if (!target || currentView !== 'editor') { handle.hidden = true; return; }
   const rect = target.getBoundingClientRect();
-  const paperRect = elements.paper.getBoundingClientRect();
   if (!rect.width || !rect.height || rect.bottom < 0 || rect.top > window.innerHeight) { handle.hidden = true; return; }
-  handle.style.left = `${Math.max(2, paperRect.left + 1)}px`;
-  handle.style.top = `${Math.max(2, Math.min(window.innerHeight - 34, rect.top + (rect.height - 32) / 2))}px`;
+  handle.style.left = `${sortHandleLeft()}px`;
+  handle.style.top = `${sortHandleTop(rect)}px`;
   handle.hidden = false;
 }
 function focusEditable(element, selectAll = false) {
@@ -865,17 +875,10 @@ function installDrag() {
     ghost.style.width = `${rect.width}px`;
     ghost.style.height = `${rect.height}px`;
     document.body.append(ghost);
-    // 落点提示牌：画在空位框左上角。z-index 高于 ghost（85 > 80），
-    // 所以即使拖动中的那一行正好压在框上，"放在哪"这句话也不会被盖住。
-    const hint = document.createElement('div');
-    hint.className = 'drop-hint';
-    hint.textContent = '松手放到这里';
-    hint.hidden = true;
-    document.body.append(hint);
     dragState = {
       item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false,
       pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top,
-      width: rect.width, height: rect.height, ghost, hint, rafId: 0, lastX: event.clientX, lastY: event.clientY,
+      width: rect.width, height: rect.height, ghost, rafId: 0, lastX: event.clientX, lastY: event.clientY,
       // 起拖时的顺序：落点没变就不记撤销、不落盘。
       originalIds: Array.from(list.querySelectorAll(':scope > .sortable')).map((el) => el.dataset.itemId),
     };
@@ -947,20 +950,14 @@ function moveDraggedToTarget(clientY) {
   else list.append(item);
 }
 // 拖动中手柄跟着空位框走，否则手柄留在原地、和真正要落的位置脱节。
-// 提示牌也钉在空位框左上角，始终指明"这一格"。
 function followHandleToFrame() {
   if (!dragState) return;
   const handle = elements.sortHandle;
   const rect = dragState.item.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
   handle.hidden = false;
-  handle.style.top = `${Math.max(2, Math.min(window.innerHeight - 34, rect.top + (rect.height - 32) / 2))}px`;
-  const hint = dragState.hint;
-  if (hint) {
-    hint.hidden = false;
-    hint.style.left = `${Math.max(2, rect.left + 6)}px`;
-    hint.style.top = `${Math.max(2, rect.top + 4)}px`;
-  }
+  handle.style.left = `${sortHandleLeft()}px`;
+  handle.style.top = `${sortHandleTop(rect)}px`;
 }
 function finishDrag() {
   if (!dragState) return;
@@ -969,7 +966,6 @@ function finishDrag() {
   if (state.rafId) cancelAnimationFrame(state.rafId);
   state.item.classList.remove('drag-source', 'dragging');
   state.ghost?.remove();
-  state.hint?.remove();
   // 落点是否真的变化：与起拖时的顺序对比，没变就不记撤销、不重排、不落盘。
   const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
   const changed = ids.length !== state.originalIds.length || ids.some((id, index) => id !== state.originalIds[index]);
@@ -1008,7 +1004,6 @@ function renderDirections() {
   const ordered = [...storeState.directions].sort((a, b) => directionSortKey(b) - directionSortKey(a));
   const directions = ordered.filter((direction) => !query || direction.name.toLowerCase().includes(query));
   elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
-  renderImportStatus();
   updateCardScales();
 }
 function directionSortKey(direction) {
@@ -1018,15 +1013,14 @@ function directionSortKey(direction) {
 }
 function renderDirectionCard(direction) {
   const article = document.createElement('article'); article.className = 'library-card direction-card'; article.dataset.directionId = direction.id;
+  article.dataset.current = String(direction.id === activeDirection?.id);
   const meta = document.createElement('div'); meta.className = 'card-meta';
   const info = document.createElement('div'); info.className = 'card-info';
-  const kind = document.createElement('span'); kind.className = 'card-kind'; kind.textContent = direction.id === activeDirection?.id ? '当前方向' : '简历方向'; info.append(kind);
-  const title = document.createElement('button'); title.type = 'button'; title.className = 'card-name'; title.textContent = direction.name; title.dataset.renameDirection = direction.id; title.title = '点击修改方向名称'; info.append(title);
-  const time = document.createElement('div'); time.className = 'card-time'; time.textContent = `最近编辑 ${fmtMinute(direction.currentDraft.updatedAt)}`; info.append(time);
+  const title = document.createElement('button'); title.type = 'button'; title.className = 'card-name'; title.textContent = direction.name; title.dataset.renameDirection = direction.id; title.title = '点击修改方向名称'; title.setAttribute('aria-label', `点击修改方向名称：${direction.name}`); info.append(title);
+  const time = document.createElement('time'); time.className = 'card-time'; time.dateTime = direction.currentDraft.updatedAt || ''; time.textContent = fmtMinute(direction.currentDraft.updatedAt); info.append(time);
   meta.append(info);
   const actions = document.createElement('div'); actions.className = 'card-actions';
-  const renameButton = document.createElement('button'); renameButton.type = 'button'; renameButton.dataset.renameDirection = direction.id; renameButton.setAttribute('aria-label', '修改方向名称'); renameButton.title = '修改方向名称'; renameButton.innerHTML = ICONS.pencil; actions.append(renameButton);
-  const deleteButton = document.createElement('button'); deleteButton.type = 'button'; deleteButton.dataset.deleteDirection = direction.id; deleteButton.setAttribute('aria-label', '删除方向'); deleteButton.title = '删除方向'; deleteButton.innerHTML = ICONS.trash; actions.append(deleteButton); meta.append(actions); article.append(meta);
+  const deleteButton = document.createElement('button'); deleteButton.type = 'button'; deleteButton.dataset.deleteDirection = direction.id; deleteButton.setAttribute('aria-label', '删除方向'); deleteButton.title = '删除方向'; deleteButton.textContent = '🗑️'; actions.append(deleteButton); meta.append(actions); article.append(meta);
   const frame = document.createElement('div'); frame.className = 'card-paper-frame'; frame.dataset.openDirection = direction.id; frame.setAttribute('role', 'button'); frame.setAttribute('tabindex', '0'); frame.setAttribute('aria-label', `打开${direction.name}`);
   const mini = document.createElement('div'); mini.className = 'card-paper'; mini.style.setProperty('--body-size', `${Number(direction.currentDraft.layout?.bodyPt || 10.5).toFixed(2)}pt`); const inner = document.createElement('div'); inner.className = 'paper-content'; buildPaperContent(inner, direction.currentDraft.content, false); mini.append(inner); frame.append(mini); article.append(frame); return article;
 }
@@ -1037,15 +1031,13 @@ function updateCardScales() {
     if (!mini) return;
     const scale = frame.clientWidth / PAPER_WIDTH_PX;
     mini.style.setProperty('--card-scale', String(scale));
-    // S-07：缩略图要"保留超页内容"。默认 CSS 把相框锁成 210/297 且
-    // overflow:hidden，超过一页的正文会被直接裁掉。这里按内容实际高度
-    // 放开相框高度：短稿不再拖一条空白纸尾，超页稿则整张纸面向下延展。
+    // S-07：缩略图至少显示完整 A4；超页正文则按实际内容向下延展，不裁切。
     // 用 offsetHeight（布局像素）而不是 getBoundingClientRect：后者被
     // transform:scale 缩过，量出来的是缩放后的视觉高度。
     const flow = mini.querySelector('.resume-flow');
     if (!flow) return;
     const paperPaddingPx = 2 * (9 / 25.4) * 96; // 上下各 9mm
-    const naturalHeight = paperPaddingPx + flow.offsetHeight + 2;
+    const naturalHeight = Math.max(PAPER_HEIGHT_PX, paperPaddingPx + flow.offsetHeight + 2);
     mini.style.height = `${naturalHeight.toFixed(2)}px`;
     frame.style.aspectRatio = 'auto';
     frame.style.height = `${(naturalHeight * scale).toFixed(2)}px`;
@@ -1087,129 +1079,6 @@ async function createDirection() {
   const direction = makeDirection(name, content, layout);
   storeState.directions.push(direction); resetEditorState(direction); await persistStore();
   elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit();}
-function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
-    reader.readAsText(file);
-  });
-}
-// 导入前的形态判断：只要"看得出是一份简历"就放行，字段层面的小问题交给
-// repairResumeContent 修（缺失板块、链接缺协议、id 重复都在那里处理）。
-function looksLikeResumeContent(content) {
-  if (!content || typeof content !== 'object' || Array.isArray(content)) return false;
-  const identity = content.identity;
-  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) return false;
-  const name = identity.name;
-  const hasName = (name && typeof name === 'object' && !Array.isArray(name) && typeof name.html === 'string')
-    || (typeof name === 'string' && Boolean(name.trim()));
-  const sections = content.sections;
-  const hasSections = Array.isArray(sections)
-    && sections.some((section) => section && typeof section === 'object' && SECTION_TYPES.has(section.type));
-  return Boolean(hasName && hasSections);
-}
-
-/**
- * Import a resume direction from a JSON file. Accepts either a bare resume
- * content document or a wrapper `{ name, content }`. Validation reuses the
- * same domain validator as storage loading, so an invalid file never enters
- * the store. The new direction is independent after import (S-03).
- *
- * `handle`（可选）是 File System Access 的文件句柄：传入时连同 lastImport
- * 元数据一起持久化，使"导入的路径"在会话之间可靠保留，重开会话后可一键
- * 重新导入同一文件；不传（input 降级路径）时只记录文件名。
- */
-async function importDirectionFromFile(file, handle = null) {
-  let parsed;
-  try {
-    parsed = JSON.parse(await readFileAsText(file));
-  } catch (error) {
-    showToast(`导入失败：文件不是有效的 JSON。原因：${error.message}`, 'error');
-    return;
-  }
-  const content = parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.content && typeof parsed.content === 'object'
-    ? parsed.content
-    : parsed;
-  // 形态闸门：repairResumeContent 会把任何对象修成一份"合法空白简历"，
-  // 于是导入一个数组/字符串/普通对象也会走到"导入成功"——用户以为内容
-  // 进去了，实际得到一份空稿（违反 S-08：不合法时提示原因且不写入）。
-  // 真正的简历文件至少同时具备 identity 与带板块的 sections 两个顶层字段。
-  if (!looksLikeResumeContent(content)) {
-    showToast('导入失败：这个文件不像简历数据（缺少 identity 或 sections 字段），未写入任何内容。', 'error');
-    return;
-  }
-  const nameFromWrapper = typeof parsed?.name === 'string' ? parsed.name.trim() : '';
-  const nameFromContent = content?.identity?.name?.html ? plainTextFromHtml(content.identity.name.html).trim() : '';
-  // 先修复再校验：外部文件常见的轻微不合规（链接缺协议、板块缺字段、
-  // id 重复、链接地址没填完）应该被自动修好，而不是整份拒绝导入。
-  // 修复过程保留全部正文内容，绝不丢字。
-  const repaired = repairResumeContent(content);
-  const validation = validateResumeContent(repaired.content);
-  if (!validation.valid) {
-    showToast(`导入失败：简历内容不符合格式。${validation.errors.slice(0, 2).join('；')}`, 'error');
-    return;
-  }
-  if (!(await saveNow())) return;
-  const direction = makeDirection(nameFromWrapper || nameFromContent || '导入的方向', repaired.content, DEFAULT_LAYOUT);
-  storeState.directions.push(direction);
-  resetEditorState(direction);
-  storeState.lastImport = { fileName: file.name || handle?.name || '未命名文件', importedAt: nowIso(), directionId: direction.id, persisted: Boolean(handle) };
-  // 先把方向数据落盘（await），再（尽力）记住文件来源句柄。来源写入若被
-  // 关闭侧边栏打断或失败，不阻塞数据持久化，避免“导入后一关侧边栏方向从未
-  // 写盘、重开即丢”的竞态。S-08 此前把 persistStore 排在 saveImportHandle
-  // 之后，正是这一竞态的根因。
-  await persistStore();
-  if (handle) { try { await saveImportHandle(handle); } catch (error) { showToast(`已导入，但记住文件来源失败：${error.message}`, 'error'); } }
-  elements.importFile.value = '';
-  renderPaper(); setView('editor'); scheduleFit();  showToast(`已导入「${direction.name}」，可开始编辑。`, 'success');
-}
-
-/**
- * 从上次记住的来源文件重新导入（数据持久化的消费端）。
- * 在手势内触发：queryPermission 已过期时 requestPermission 才合规。
- */
-async function reimportFromLastSource() {
-  let source = null;
-  try { source = await loadImportSource(); } catch { source = null; }
-  if (!source?.handle) {
-    showToast('没有可重新导入的来源记录，请用“导入”按钮选择文件。', 'error');
-    return;
-  }
-  try {
-    const text = await readTextFromHandle(source.handle);
-    await importDirectionFromFile(new File([text], source.fileName, { type: 'application/json' }), source.handle);
-  } catch (error) {
-    if (error && (error.message === 'NEED_PERMISSION' || error.message === 'PERMISSION_DENIED')) {
-      showToast(`读取「${source.fileName}」需要重新授权，请用“导入”按钮再选一次该文件。`, 'error');
-      return;
-    }
-    showToast(`重新导入失败：${error.message}`, 'error');
-  }
-}
-
-/** 方向室渲染"上次导入"状态条：文件名 + 时间 + 重新导入按钮（有持久句柄时）。 */
-function renderImportStatus() {
-  const last = storeState.lastImport;
-  if (!last) { elements.importStatus.hidden = true; elements.importStatus.replaceChildren(); return; }
-  elements.importStatus.hidden = false;
-  const label = document.createElement('span');
-  label.className = 'import-status-text';
-  const when = (last.importedAt || '').replace('T', ' ').slice(0, 16);
-  label.textContent = `上次导入：${last.fileName}${when ? ` · ${when}` : ''}`;
-  label.title = last.persisted ? '该来源已记住，可一键重新导入' : '该来源未记住文件句柄，重新导入需重新选择文件';
-  elements.importStatus.replaceChildren(label);
-  if (last.persisted) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'quiet-button import-reimport';
-    button.textContent = '重新导入';
-    button.title = '重新读取上次导入的文件并生成新方向';
-    button.addEventListener('click', () => { reimportFromLastSource().catch((error) => showToast(`重新导入失败：${error.message}`, 'error')); });
-    elements.importStatus.append(button);
-  }
-}
-
 function openRenameDirection(id) {
   const direction = findDirection(id); if (!direction) return;
   pendingRenameId = id; elements.renameName.value = direction.name; openDialog(elements.renameDialog); elements.renameName.focus(); elements.renameName.select();
@@ -1287,28 +1156,6 @@ function installEvents() {
   // 顶栏按方向 A 设计稿只保留 PDF 一个主动作，不再放"方向室"按钮。
   byId('back-editor').addEventListener('click', () => setView('editor'));
   byId('create-direction').addEventListener('click', openCreateDirection);
-  elements.importButton.addEventListener('click', async () => {
-    // 优先 File System Access API：拿到可持久化的文件句柄，"导入的来源"
-    // 才能随 IndexedDB 跨会话保留，重开会话后可一键重新导入。
-    if (supportsFileSystemAccess()) {
-      let handle;
-      try {
-        handle = await pickImportFile();
-      } catch { handle = null; }
-      if (handle === undefined) return; // 用户在选取器里取消
-      if (handle) {
-        const file = await handle.getFile();
-        await importDirectionFromFile(file, handle).catch((error) => showToast(`导入失败：${error.message}`, 'error'));
-        return;
-      }
-    }
-    elements.importFile.click(); // 降级：普通文件选择（不记来源句柄）
-  });
-  elements.importFile.addEventListener('change', async () => {
-    const file = elements.importFile.files?.[0];
-    elements.importFile.value = '';
-    if (file) await importDirectionFromFile(file).catch((error) => showToast(`导入失败：${error.message}`, 'error'));
-  });
   elements.directionSearch.addEventListener('input', renderDirections);
   elements.directionGrid.addEventListener('click', async (event) => {
     const rename = event.target.closest('[data-rename-direction]'); if (rename) { event.stopPropagation(); openRenameDirection(rename.dataset.renameDirection); return; }

@@ -1,0 +1,20 @@
+[
+  {
+    "file": "directions-720x900.png",
+    "state": "directions",
+    "size": "720x900",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  },
+  {
+    "file": "directions-390x844.png",
+    "state": "directions",
+    "size": "390x844",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": []
+  }
+]

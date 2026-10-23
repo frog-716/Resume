@@ -4,7 +4,9 @@
 
 Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。首版仅本人在当前 Mac、当前 Chrome 自用：侧边栏内快速编辑多个命名的简历方向并通过 Chrome 打印导出 PDF。每个方向只有一个自动保存的当前稿；新方向从已有方向复制后独立演进；不再提供快照、废纸篓或历史版本。以用户指定妙搭稿为初稿及版面基础，保持单张 A4，超页时缩小文字。首版不读取网页、不接 AI、不申请网站权限。Career-Next 继续作为长期优化项目；两边独立保存资料、独立发版，实际使用经验人工反馈。
 
-2026-10-16：自动排版算法 L-19 获用户批准并冻结，见`SPEC.md`。本轮形态调整后，`extension/`是 Chrome 侧边栏实现：`extension/sidepanel.mjs`负责方向室、纸面编辑、快捷键、自动保存和 Chrome 打印，`extension/domain-*.mjs`保存领域规则副本，`extension/service-worker.js`只负责打开侧边栏。`src/domain/`和`server/`保留为旧的本机 App 实现与排版测试参考，不能作为侧边栏运行依赖。当前扩展先加载试用，再验收真实侧边栏宽度、Mac 快捷键、中文输入和打印结果。
+2026-10-22：项目收敛为**唯一前端 `extension/`**（Chrome 侧边栏，加载该目录即可用）：`extension/sidepanel.html` 是侧边栏入口，`sidepanel.mjs` 负责方向室、纸面编辑、快捷键、自动保存和 Chrome 打印，`domain-*.mjs` 是领域规则及其测试的唯一住所（测试随源码同目录，`npm test` 全绿），`print.html`/`print.mjs` 是打印预览页，`service-worker.js` 只负责打开侧边栏。旧本机 App 路径（`web/`、`server/`、`native/`、`src/`）及其构建产物（`dist/`、`out/`）已于 2026-10-22 全部移入废纸篓（`~/.Trash/resume-cleanup-20261022-161028/`，git 跟踪部分可用 `git checkout` 找回）；被文档引用的 8 个原型与 README/CHANGELOG 保留在 `prototypes/`。构建与测试：`npm run build:extension` 生成 `dist-extension/`（可再生产物），`npm test` 跑 `extension/*.test.mjs`。
+
+2026-10-23：方向室按用户反馈做视觉精修：名称点击改名、删除仅保留 `🗑️`、去掉“当前方向”和“最近编辑”前缀；JSON 导入与来源记忆按 S-08 确认取消，已有方向保留。
 
 ## 阅读入口
 
@@ -13,6 +15,7 @@ Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。�
 - [抽离设计讨论](docs/extraction-design.md)：已确定目标、源码调查事实、待回答问题与实施边界。
 - [侧边栏 UI/UX 设计说明](docs/design/sidepanel-ui-directions.md)：外围界面已定稿为**方向 A「纸面工坊 · 极简专业」**（墨蓝 #3D5A80 + 灰卡纸底），含色板/字体/组件规则与共同可用性基线；纸面冻结规则不动。其余三个备选方向已于 round 08 移出工作区。待办：弹窗/toast/排序手柄/联系添加菜单/超页边界、动效、SPEC §7 真机验收。
 - [UI 首屏对比页](design-handoff/ui-directions/style-explorer.html)：方向 A 的 720×900 首屏实画与对比页（`design-handoff/ui-directions/`；纸面为 v34 真实渲染抽取源，联系图标容器 9×9px、墨迹含描边最长边齐边界）。
+- [侧边栏 UI/UX 优化 Demo](design-handoff/ui-ux-refactor-demo/)：沿用方向 A 的独立可操作视觉原型；含编辑页、方向室、创建/删除弹窗与超页拦截状态，不修改正式实现或产品规格。
 - [无上下文对抗审查](docs/review/first-version-adversarial.md)：6组待确认建议及审查范围。
 - [自动排版算法对抗审查](docs/review/spacing-auto-layout-algorithms.md)：从页面约束和真实排版出发，对比三种重构方案并给出未定稿的推荐；不构成已确认产品规则。
 - [Gemini间距算法对抗审查](docs/review/gemini-spacing-adversarial-20261016.md)：Gemini独立审查七处候选间距，提出一个共用松紧旋钮方案；含本地复核与不应照抄的项目冲突，不构成已确认产品规则。

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Resume · 侧边栏 UI/UX 优化 Demo</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app-shell" id="app-shell">
+    <header class="topbar" id="editor-topbar">
+      <div class="brand-area">
+        <button class="resume-title" id="rename-current" type="button" title="修改当前方向名称"></button>
+        <button class="room-button" id="open-directions" type="button" aria-label="打开简历方向室，快捷键 Command F" title="简历方向室 · ⌘F">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5h13v11h-13zM7 4.5v11M3.5 8.2h13"/></svg>
+          <span>方向</span><kbd>⌘F</kbd>
+        </button>
+      </div>
+
+      <div class="view-controls" role="group" aria-label="纸张缩放与辅助线">
+        <button class="quiet-button zoom-button" id="zoom-out" type="button" aria-label="缩小">−</button>
+        <button class="quiet-button zoom-readout" id="zoom-readout" type="button" title="点击输入比例；留空恢复整页"></button>
+        <input class="zoom-input" id="zoom-input" type="text" inputmode="decimal" autocomplete="off" hidden aria-label="缩放比例" placeholder="整页">
+        <button class="quiet-button zoom-button" id="zoom-in" type="button" aria-label="放大">＋</button>
+        <span class="control-separator" aria-hidden="true"></span>
+        <button class="quiet-button guide-button" id="toggle-guide" type="button" aria-pressed="true"><span class="dashed-square" aria-hidden="true"></span><span>虚线框</span></button>
+      </div>
+
+      <div class="top-actions">
+        <button class="primary-button pdf-button" id="export-pdf" type="button"><span>PDF</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v8m0 0 3-3m-3 3-3-3M4.5 12v3.5h11V12"/></svg></button>
+      </div>
+    </header>
+
+    <main class="editor-view screen is-active" id="editor-view" aria-label="简历编辑页">
+      <div class="paper-scroller" id="paper-scroller">
+        <div class="paper-space" id="paper-space">
+          <article class="paper" id="resume-paper" aria-label="A4 简历编辑稿">
+            <div class="safe-zone" id="safe-zone" aria-hidden="true"></div>
+            <div class="paper-content" id="paper-content"></div>
+            <div class="boundary" aria-hidden="true"><span>内容超出一页 · 暂停打印</span></div>
+          </article>
+        </div>
+      </div>
+    </main>
+
+    <section class="directions-view screen" id="directions-view" aria-label="简历方向室" hidden>
+      <div class="directions-header">
+        <button class="back-button" id="back-editor" type="button" aria-label="返回编辑页"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 4.5-5.5 5.5 5.5 5.5"/></svg></button>
+        <label class="search-wrap"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.7" cy="8.7" r="5.4"/><path d="m12.7 12.7 4 4"/></svg><input id="direction-search" type="search" placeholder="搜索简历方向" autocomplete="off" aria-label="搜索简历方向"></label>
+        <button class="primary-button create-button" id="create-direction" type="button" aria-label="新建简历方向" title="新建方向"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+        <button class="quiet-button import-button" id="import-direction" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12V3.8m0 0L6.8 7M10 3.8 13.2 7M4.5 11.5v4h11v-4"/></svg><span>导入</span></button>
+      </div>
+      <div class="import-status" id="import-status" hidden></div>
+      <div class="directions-meta"><span id="direction-count"></span><span>按最近编辑排序</span></div>
+      <div class="direction-grid" id="direction-grid"></div>
+      <div class="empty-state" id="empty-state" hidden>
+        <div class="empty-mark" aria-hidden="true"><svg viewBox="0 0 36 36"><path d="M8 6.5h20v23H8zM12.5 13h11M12.5 18h11M12.5 23h7"/></svg></div>
+        <p class="empty-title">没有找到这个方向</p>
+        <p class="empty-copy">试试其他名称，或新建一个方向。</p>
+        <button class="quiet-button" id="clear-search" type="button">清除搜索</button>
+      </div>
+    </section>
+  </div>
+
+  <input id="import-file" type="file" accept=".json,application/json" hidden>
+
+  <dialog class="modal" id="direction-dialog" aria-labelledby="direction-dialog-title">
+    <form id="direction-form">
+      <button class="dialog-close" type="button" data-close-dialog aria-label="关闭"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg></button>
+      <h2 id="direction-dialog-title">新建简历方向</h2>
+      <p class="dialog-intro">复制一个已有方向，之后的修改互不影响。</p>
+      <label class="field-label" for="direction-name">方向名称</label>
+      <input class="text-field" id="direction-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计 · B2B">
+      <label class="field-label" for="direction-template">复制内容自</label>
+      <select class="text-field" id="direction-template" name="template" required></select>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">创建方向</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="rename-dialog" aria-labelledby="rename-dialog-title">
+    <form id="rename-form">
+      <button class="dialog-close" type="button" data-close-dialog aria-label="关闭"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg></button>
+      <h2 id="rename-dialog-title">修改方向名称</h2>
+      <label class="field-label" for="rename-name">方向名称</label>
+      <input class="text-field" id="rename-name" name="name" maxlength="80" required autocomplete="off">
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">保存名称</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal confirm-modal" id="delete-dialog" aria-labelledby="delete-dialog-title">
+    <form id="delete-form">
+      <button class="dialog-close" type="button" data-close-dialog aria-label="关闭"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg></button>
+      <div class="dialog-symbol danger-symbol" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 5.5h12M8 5.5v-2h4v2m-6 0 .6 10h6.8l.6-10m-5.5 3v4m2.2-4v4"/></svg></div>
+      <h2 id="delete-dialog-title">删除这个方向？</h2>
+      <p class="confirm-copy" id="delete-copy"></p>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog>保留方向</button><button class="primary-button danger-button" type="submit">删除方向</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
