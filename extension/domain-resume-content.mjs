@@ -60,46 +60,93 @@ export function createEmptyResumeContent() {
   };
 }
 
-/** Return a small fictional first-page example for UI development. */
+/**
+ * Return the "原型" template: a complete, ATS-friendly sample resume for a
+ * Forward Deployed Engineer (FDE).
+ *
+ * Content rules kept deliberately plain so parsers keep it intact:
+ * - Four standard sections in a fixed order, no graphics, no columns tricks.
+ * - Each bullet is one achievement: action verb + scope + measurable result.
+ * - Keywords (FDE, RAG, Agent, Kubernetes, POC, Technical Discovery …) appear
+ *   organically inside sentences instead of a keyword dump.
+ * Contact details use placeholder digits and example.com on purpose; the file
+ * ships in the extension bundle and must never carry real personal data.
+ */
 export function createSampleResumeContent() {
   const content = createEmptyResumeContent();
 
-  content.identity.name = text("林舟");
+  content.identity.name = text("陈叙");
   content.identity.contacts = {
-    phone: text("010-0000-0000"),
-    email: text("lin.zhou@example.com"),
-    wechat: text("linzhou-demo"),
+    phone: text("138-0000-0000"),
+    email: text("chen.xu@example.com"),
+    wechat: text("chenxu-fde"),
   };
   content.identity.links = {
     github: {
       type: "github",
-      href: "https://example.com/lin-zhou",
+      href: "https://example.com/chenxu/github",
       label: text("GitHub"),
     },
     personalWebsite: {
       type: "personalWebsite",
-      href: "https://example.com/lin-zhou/profile",
-      label: text("个人网页"),
+      href: "https://example.com/chenxu",
+      label: text("作品集"),
     },
   };
 
   content.sections[0].bullets = [
-    { id: "skill-1", html: "熟悉前端页面开发与组件拆分" },
-    { id: "skill-2", html: "能用清晰的数据结构整理业务信息" },
-    { id: "skill-3", html: "关注可读性、键盘操作与页面适配" },
+    { id: "skill-1", html: "<b>语言与框架</b>：Python、TypeScript、Go、Java、SQL、Rust；FastAPI、gRPC、React、Next.js、Node.js、Django、Celery" },
+    { id: "skill-2", html: "<b>AI 工程</b>：RAG、Agentic Workflow、Function Calling、LangGraph、vLLM、SFT / DPO 微调、评测体系与幻觉治理" },
+    { id: "skill-3", html: "<b>数据与云原生</b>：PostgreSQL、ClickHouse、Kafka、Flink、Airflow、Hive、Kubernetes、Terraform、AWS / 阿里云" },
+    { id: "skill-4", html: "<b>交付方法论</b>：Technical Discovery、POC 验证、Solution Architecture、交付风险管控、SLA 保障、可观测性与交付资产管理" },
+    { id: "skill-5", html: "<b>证书与语言</b>：AWS Solutions Architect Professional、CKA、TOGAF；雅思 8.0，可全英文独立驻场交付与方案答辩" },
   ];
 
   content.sections[1].entries = [
     {
       id: "work-entry-1",
       columns: [
-        text("星桥科技（虚构）"),
-        text("前端工程师"),
-        text("2022.06—至今"),
+        text("字节跳动 · 火山引擎"),
+        text("高级前向部署工程师（Senior FDE）"),
+        text("2022.07—至今"),
       ],
       bullets: [
-        { id: "work-bullet-1", html: "维护内部运营台，让常用操作更容易查找。" },
-        { id: "work-bullet-2", html: "与设计和产品同事协作，整理页面状态与交互细节。" },
+        { id: "work-bullet-1", html: "主导 12 家头部客户（金融、汽车、零售）的大模型应用落地，交付周期由 14 周压缩至 7 周，客户续约率 <b>94%</b>。" },
+        { id: "work-bullet-2", html: "设计 RAG 知识中台并覆盖 6 类知识库场景，知识命中率 68%→<b>96%</b>，人工转接率降 41%，单客户年省 1200 万元。" },
+        { id: "work-bullet-3", html: "沉淀可复用 FDE 交付脚手架（FastAPI + LangGraph + 自动评测），输出 24 个行业模板，冷启动时间缩短 <b>60%</b>。" },
+        { id: "work-bullet-4", html: "带领 6 人虚拟团队对接客户 CTO / CIO，完成 20+ 次技术尽调与方案评审，推动 4 个千万级订单签约，回款 1.1 亿。" },
+        { id: "work-bullet-12", html: "建立交付复盘与故障归档机制，沉淀 30 篇方案与故障文档并纳入新人培养，人均效率提升 <b>35%</b>，故障复发率降 28%。" },
+        { id: "work-bullet-14", html: "推动 CI/CD 与自动化回归在交付项目落地，上线缺陷率下降 <b>47%</b>，交付 SLA 达成率由 91% 升至 99.2%，恢复 8 分钟。" },
+        { id: "work-bullet-16", html: "申请发明专利 3 项（推理调度、缓存复用、检索重排），均进入实质审查并在生产集群落地，吞吐提升 1.8 倍。" },
+        { id: "work-bullet-18", html: "主讲 5 场客户技术工作坊，覆盖 200+ 业务与技术决策人，孵化 8 个 POC 并转化 3 个百万级订单，平均 6 周成单。" },
+      ],
+    },
+    {
+      id: "work-entry-2",
+      columns: [
+        text("智谱 AI"),
+        text("解决方案架构师（FDE）"),
+        text("2020.03—2022.06"),
+      ],
+      bullets: [
+        { id: "work-bullet-5", html: "作为 Forward Deployed Engineer 负责 API 售前验证与现场交付，支撑 45+ 客户 POC，转化率 <b>71%</b>，回款 6800 万元。" },
+        { id: "work-bullet-6", html: "构建多模态文档解析流水线（OCR + LayoutLM + RAG），字段抽取准确率 <b>97.2%</b>，人工复核成本降 72%。" },
+        { id: "work-bullet-7", html: "主导私有化部署方案（Kubernetes + vLLM + 信创），落地 15 家客户，单集群 300+ QPS、P99 稳定在 720ms，续费 3 家。" },
+        { id: "work-bullet-8", html: "牵头麒麟 / 昇腾信创环境适配，完成 4 个标杆客户上线，推理成本下降 38%，客户满意度由 4.3 升至 4.8，纳入交付包。" },
+        { id: "work-bullet-13", html: "搭建模型效果评测集（2000 条样本 + 双人标注），把 POC 验收标准量化为 6 项可复现指标，争议率降 60%。" },
+      ],
+    },
+    {
+      id: "work-entry-3",
+      columns: [
+        text("商汤科技"),
+        text("后端工程师"),
+        text("2018.07—2020.02"),
+      ],
+      bullets: [
+        { id: "work-bullet-9", html: "负责城市视觉中枢的数据接入与任务调度，日均处理 2.4 亿事件流、跨 7 地机房，服务可用性 <b>99.97%</b>，零重大事故。" },
+        { id: "work-bullet-10", html: "重构批处理链路（Airflow + ClickHouse 分区优化），核心报表产出由 5 小时降至 18 分钟，资源成本降 45%。" },
+        { id: "work-bullet-11", html: "主导数据质量治理，制定埋点与校验规范并接入 CI，脏数据率由 9% 降至 <b>0.5%</b>，下游投诉工单清零，年省 300 万。" },
       ],
     },
   ];
@@ -108,24 +155,52 @@ export function createSampleResumeContent() {
     {
       id: "project-entry-1",
       columns: [
-        text("城市绿行数据看板（虚构）"),
-        text("个人项目"),
-        text("2024.01—2024.04"),
+        text("开源：fde-starter-kit"),
+        text("作者"),
+        text("2025.03—至今"),
       ],
       bullets: [
-        { id: "project-bullet-1", html: "把虚构的出行数据整理为可筛选的图表页面。" },
-        { id: "project-bullet-2", html: "补充空数据和窄屏状态，方便演示不同使用场景。" },
+        { id: "project-bullet-1", html: "开源 FDE 交付脚手架（鉴权、日志、评测、部署），GitHub <b>3.2k</b> Star，120+ 团队用于 POC 与生产交付，周下载 1.2k。" },
+        { id: "project-bullet-2", html: "配套《FDE 交付手册》阅读 12 万+，被 5 家独角兽采纳为新人培训教材，登上 GitHub Trending 日榜，8 场大会引用。" },
+      ],
+    },
+    {
+      id: "project-entry-2",
+      columns: [
+        text("制造业设备预测性维护平台"),
+        text("交付负责人（驻场 6 个月）"),
+        text("2024.07—2025.01"),
+      ],
+      bullets: [
+        { id: "project-bullet-3", html: "驻场梳理 6 条产线、800+ 传感器数据，构建时序特征管道与异常检测模型，非计划停机下降 <b>31%</b>，OEE 提升 6%。" },
+        { id: "project-bullet-4", html: "端到端交付采集—特征—告警—工单闭环，培训客户 30 人自主运维，二期合同续签 1200 万元并列为集团标杆。" },
+        { id: "project-bullet-5", html: "设计分级告警与值班 SOP，误报率控制在 4% 以内，客户 CSAT 4.9 / 5，方案复制到集团另外 3 个生产基地，续签 3 年。" },
+      ],
+    },
+    {
+      id: "project-entry-3",
+      columns: [
+        text("国有大行智能合规审查 Agent"),
+        text("技术负责人"),
+        text("2023.09—2024.05"),
+      ],
+      bullets: [
+        { id: "project-bullet-6", html: "基于 LangGraph 构建多步审查 Agent，串联 8 类监管规则与 12 份制度文件，单份材料审核由 50 分钟降至 <b>2.5 分钟</b>。" },
+        { id: "project-bullet-7", html: "Function Calling 对接行内风控与影像系统，审查结论可追溯、可审计，规则覆盖率 100%，误报率 <b>3.2%</b>，复核量降 80%。" },
+        { id: "project-bullet-8", html: "单日处理 3.6 万份材料、峰值并发 500，平均响应 6 秒，一次性通过等保三级与行内红队渗透测试，支撑 6 个业务条线。" },
+        { id: "project-bullet-9", html: "沉淀规则配置化能力，新监管规则接入由 3 天缩短至 <b>2 小时</b>，业务方自助上线，可版本回滚，年省研发投入 400 人天。" },
       ],
     },
   ];
 
   content.sections[3].columns = [
-    text("2018—2022"),
-    text("海岚大学（虚构）· 信息管理"),
-    text("杭州（虚构）"),
+    text("清华大学"),
+    text("计算机科学与技术"),
+    text("2014—2018"),
   ];
   content.sections[3].bullets = [
-    { id: "education-bullet-1", html: "课程项目中整理虚构数据并制作展示说明。" },
+    { id: "education-bullet-1", html: "ACM-ICPC 全球总决赛（World Finals）参赛选手，亚洲区域赛金牌（队内主代码手，赛区第 2 名），校队队长 2 年。" },
+    { id: "education-bullet-2", html: "GPA 3.9 / 4.0（专业前 2%），国家奖学金 3 次，清华大学优秀毕业生；辅修统计学，校级优秀毕设，发表 EI 论文 2 篇。" },
   ];
 
   return content;

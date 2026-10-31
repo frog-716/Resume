@@ -1,5 +1,5 @@
 import { fitResumeLayout } from './domain-auto-layout.mjs';
-import { normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
+import { normalizeLinkHref, repairResumeContent, createSampleResumeContent } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
 import { clone, uid, nowIso, makeDirection, initialState, directionSortKey, reorderListById, canDeleteDirection, DEFAULT_LAYOUT } from './domain-editor.mjs';
 
@@ -818,7 +818,7 @@ function onPaste(event) {
     }
     if (lines.length) renderPaper();
   } else { document.execCommand('insertText', false, raw.replace(/\r?\n/g, ' ')); updateContentFromElement(element); }
-  normalizeFieldRuns(element); scheduleFit(); scheduleSave();
+  normalizeFieldRuns(element, { preserveCaret: true }); scheduleFit(); scheduleSave();
 }
 function onCompositionStart() {
   // 输入法组字期间 beforeinput 不会压入撤销快照，若这里也不压，
@@ -826,14 +826,14 @@ function onCompositionStart() {
   if (!composing) pushUndo(true);
   composing = true;
 }
-function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); } }
+function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element, { preserveCaret: true }); scheduleFit(); scheduleSave(); } }
 // 取消组字（候选框按 Esc / 焦点被移走 / 输入目标变更）不会派发 compositionend。
 // 不在这里收尾，composing 会永久卡在 true：onInput 从此直接 return，
 // 用户之后打的每一个字都不落盘，关掉侧边栏即全部丢失。
 function onCompositionCancel(event) {
   composing = false;
   const element = event.target.closest('[data-edit]');
-  if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); }
+  if (element) { updateContentFromElement(element); normalizeFieldRuns(element, { preserveCaret: true }); scheduleFit(); scheduleSave(); }
 }
 function onInput(event) { const element = event.target.closest('[data-edit]'); if (!element || composing) return; updateContentFromElement(element); scheduleFit(); scheduleSave(); }
 function onBeforeInput(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) pushUndo(false); }
@@ -854,16 +854,27 @@ function installDrag() {
     const ghost = item.cloneNode(true);
     ghost.classList.remove('drag-source', 'selected', 'dragging');
     ghost.classList.add('drag-ghost');
+    // 拖影只负责"跟着手走"的视觉：剥掉编辑与数据属性，减少节点负担和内存。
+    ghost.removeAttribute('data-item-id');
+    ghost.querySelectorAll('[contenteditable]').forEach((n) => n.removeAttribute('contenteditable'));
+    ghost.querySelectorAll('[data-edit],[data-placeholder],[data-item-id],[id]').forEach((n) => {
+      n.removeAttribute('data-edit'); n.removeAttribute('data-placeholder');
+      n.removeAttribute('data-item-id'); n.removeAttribute('id');
+    });
     ghost.style.position = 'fixed';
     ghost.style.margin = '0';
     ghost.style.left = `${rect.left}px`;
     ghost.style.top = `${rect.top}px`;
     ghost.style.width = `${rect.width}px`;
     ghost.style.height = `${rect.height}px`;
+    ghost.style.transform = 'translate3d(0,0,0)';
     document.body.append(ghost);
     dragState = {
       item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false,
-      pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top,
+      pointerId: event.pointerId,
+      grabX: event.clientX, grabY: event.clientY, itemRect: rect,
+      // 起拖缓存每个可排项的中点：拖动中只比数值，不再每帧量布局。
+      sortCache: measureSortables(list, item),
       width: rect.width, height: rect.height, ghost, rafId: 0, lastX: event.clientX, lastY: event.clientY,
       // 起拖时的顺序：落点没变就不记撤销、不落盘。
       originalIds: Array.from(list.querySelectorAll(':scope > .sortable')).map((el) => el.dataset.itemId),
@@ -882,9 +893,9 @@ function installDrag() {
     dragState.rafId = requestAnimationFrame(() => {
       dragState.rafId = 0;
       if (!dragState) return;
-      dragState.ghost.style.left = `${dragState.lastX - dragState.offsetX}px`;
-      dragState.ghost.style.top = `${dragState.lastY - dragState.offsetY}px`;
-      // 真实搬动空位框：被指向的行当场"让位"，其余行依次让开。
+      // 拖影走 transform（合成层），不再每帧改 left/top 触发布局。
+      dragState.ghost.style.transform = `translate3d(${dragState.lastX - dragState.grabX}px, ${dragState.lastY - dragState.grabY}px, 0)`;
+      // 真实搬动空位框：被指向的行当场"让位"，其余行以 FLIP 平滑让开。
       moveDraggedToTarget(dragState.lastY);
       followHandleToFrame();
     });
@@ -916,31 +927,60 @@ function nextSortableAfter(element) {
   while (node && !node.classList.contains('sortable')) node = node.nextElementSibling;
   return node;
 }
+// 量一次每个可排项的中点，缓存给拖动期做 O(1) 落点判断（不再每帧 getBoundingClientRect）。
+function measureSortables(list, dragged) {
+  const out = [];
+  for (const el of list.children) {
+    if (el === dragged || !el.classList.contains('sortable')) continue;
+    const r = el.getBoundingClientRect();
+    out.push({ el, mid: r.top + r.height / 2 });
+  }
+  return out;
+}
 // 落点计算与真实搬动：指针落在某一行上半部 → 插到它之前（那一行"让位"下移，
 // 空位框停在它的位置）；落在下半部 → 落到它之后；越过末行 → 排到末尾。
 // 被拖条目本身就在流里（它变成了空位框），所以其它行会实时围着它重排，
-// 用户看到的就是"哪一行让开了、哪一格空着"。
+// 用户看到的就是"哪一行让开了、哪一格空着"；让开/归位用 FLIP 平滑过渡。
 function moveDraggedToTarget(clientY) {
-  const { item, list } = dragState;
-  const siblings = Array.from(list.children).filter((el) => el !== item && el.classList.contains('sortable'));
+  const { item, list, sortCache } = dragState;
+  if (!sortCache) return;
   let before = null;
-  for (const sibling of siblings) {
-    const rect = sibling.getBoundingClientRect();
-    if (clientY < rect.top + rect.height / 2) { before = sibling; break; }
-  }
+  for (const c of sortCache) { if (clientY < c.mid) { before = c.el; break; } }
   const next = nextSortableAfter(item);
   // 位置没变就不搬：一次 insertBefore 会触发整列表重排，没必要就别动。
   if (before ? next === before : next === null) return;
   dragState.moved = true;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  // 先收掉上一次让位动画，保证本次 FLIP 量到的都是纯布局位置，不叠加位移。
+  for (const c of sortCache) c.el.getAnimations().forEach((a) => a.cancel());
+  const olds = sortCache.map((c) => [c.el, c.el.getBoundingClientRect().top]);
   if (before) list.insertBefore(item, before);
   else list.append(item);
+  // 边量新位置边起动画：每个元素都量它自己（此刻尚未动画）的布局位，缓存才准。
+  const nextCache = [];
+  for (const [el, oldTop] of olds) {
+    const r = el.getBoundingClientRect();
+    nextCache.push({ el, mid: r.top + r.height / 2 });
+    if (reduce) continue;
+    const delta = oldTop - r.top;
+    if (Math.abs(delta) > 0.5) {
+      el.animate(
+        [{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }],
+        { duration: 170, easing: 'cubic-bezier(.2,.72,.3,1)' }
+      );
+    }
+  }
+  // 缓存的中点与空位框位置只在真正搬动时刷新一次。
+  dragState.sortCache = nextCache;
+  dragState.itemRect = item.getBoundingClientRect();
 }
 // 拖动中手柄跟着空位框走，否则手柄留在原地、和真正要落的位置脱节。
 function followHandleToFrame() {
   if (!dragState) return;
   const handle = elements.sortHandle;
-  const rect = dragState.item.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
+  // 空位框只在换位时移动，位置已缓存在 itemRect；不再每帧量一次布局。
+  const rect = dragState.itemRect;
+  if (!rect || !rect.width || !rect.height) return;
   handle.hidden = false;
   handle.style.left = `${sortHandleLeft()}px`;
   handle.style.top = `${sortHandleTop(rect)}px`;
@@ -951,7 +991,25 @@ function finishDrag() {
   elements.sortHandle.classList.remove('is-dragging');
   if (state.rafId) cancelAnimationFrame(state.rafId);
   state.item.classList.remove('drag-source', 'dragging');
-  state.ghost?.remove();
+  // 落位收尾：拖影就地淡出（并轻微收一下），不再"啪"地消失。
+  if (state.ghost) {
+    const ghost = state.ghost;
+    const gx = state.lastX - state.grabX;
+    const gy = state.lastY - state.grabY;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (reduce) ghost.remove();
+    else {
+      ghost.animate(
+        [
+          { transform: `translate3d(${gx}px, ${gy}px, 0) scale(1)`, opacity: 0.95 },
+          { transform: `translate3d(${gx}px, ${gy}px, 0) scale(0.98)`, opacity: 0 },
+        ],
+        { duration: 140, easing: 'cubic-bezier(.2,.72,.3,1)' }
+      ).onfinish = () => ghost.remove();
+      // 兜底：动画被系统取消时也清掉，避免拖影残留。
+      setTimeout(() => ghost.remove(), 260);
+    }
+  }
   // 落点是否真的变化：与起拖时的顺序对比，没变就不记撤销、不重排、不落盘。
   const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
   const changed = ids.length !== state.originalIds.length || ids.some((id, index) => id !== state.originalIds[index]);
@@ -1037,33 +1095,31 @@ function confirmAction(message, title = '请确认', actionText = '确认') {
 }
 function openCreateDirection() {
   elements.directionName.value = '';
-  // “选择模板”占位项：禁选、默认选中，提示用户先选模板；值为空，
-  // 在 createDirection 里当作示例模板处理，保留“直接回车即建毛坯房”的默认行为。
-  const placeholderOption = document.createElement('option');
-  placeholderOption.value = '';
-  placeholderOption.textContent = '选择模板';
-  placeholderOption.disabled = true;
-  placeholderOption.selected = true;
-  // “示例模板”就是毛坯房：预填一份虚构示例（林舟），一来就有内容可改、
-  // Enter 也能续加，而不是给你一个啥都没有、加不了的空壳。
+  // “原型”是默认模板，直接作为首项并选中：用户点开就能用，不必先展开
+  // 下拉再挑。这里刻意不放 disabled 的占位项——给 disabled option 设
+  // selected 会让部分环境下 select 卡在空值，切换后仍取不到模板。
   const sampleOption = document.createElement('option');
   sampleOption.value = '__sample__';
-  sampleOption.textContent = '示例模板（带示例内容 · 毛坯房）';
-  elements.directionTemplate.replaceChildren(placeholderOption, sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
-  if (activeDirection) elements.directionTemplate.value = activeDirection.id;
+  sampleOption.textContent = '原型';
+  elements.directionTemplate.replaceChildren(sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
+  elements.directionTemplate.value = '__sample__';
   openDialog(elements.directionDialog); elements.directionName.focus();
 }
 async function createDirection() {
   const name = elements.directionName.value.trim();
+  if (!name) return;
   const templateValue = elements.directionTemplate.value;
   const useSample = !templateValue || templateValue === '__sample__';
-  const template = useSample ? null : (findDirection(templateValue) || activeDirection);
-  if (!name || (!useSample && !template)) return;
-  if (!(await saveNow())) return;
-  const content = useSample ? createSampleResumeContent() : template.currentDraft.content;
-  const layout = useSample ? DEFAULT_LAYOUT : template.currentDraft.layout;
+  const source = useSample ? null : findDirection(templateValue);
+  if (!useSample && !source) return;
+  // 旧草稿保存失败不该阻塞新建：内容还在内存里，下一次编辑会重试落盘。
+  // 之前这里 return 会让“创建”按钮看起来毫无反应。
+  await saveNow().catch(() => false);
+  const content = useSample ? createSampleResumeContent() : source.currentDraft.content;
+  const layout = useSample ? DEFAULT_LAYOUT : source.currentDraft.layout;
   const direction = makeDirection(name, content, layout);
-  storeState.directions.push(direction); resetEditorState(direction); await persistStore();
+  storeState.directions.push(direction); resetEditorState(direction);
+  try { await persistStore(); } catch (error) { showToast(`已创建，但保存失败：${error.message}`, 'error'); }
   elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit();}
 function openRenameDirection(id) {
   const direction = findDirection(id); if (!direction) return;
@@ -1149,7 +1205,7 @@ function installEvents() {
     const frame = event.target.closest('[data-open-direction]'); if (frame) await openDirection(frame.dataset.openDirection);
   });
   elements.directionGrid.addEventListener('keydown', async (event) => { const frame = event.target.closest('[data-open-direction]'); if (frame && ['Enter', ' '].includes(event.key)) { event.preventDefault(); await openDirection(frame.dataset.openDirection); } });
-  elements.directionForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'create') { event.preventDefault(); createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); } });
+  elements.directionForm.addEventListener('submit', (event) => { event.preventDefault(); if (event.submitter?.value === 'cancel') return; createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); });
   elements.renameForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'rename') { event.preventDefault(); const value = elements.renameName.value; elements.renameDialog.close('renamed'); renameDirection(value).catch((error) => showToast(`改名失败：${error.message}`, 'error')); } });
   elements.confirmForm.addEventListener('submit', (event) => { if (!event.submitter) { event.preventDefault(); elements.confirmDialog.close('cancel'); } });
   // 取消按钮是 type="button"（不做表单默认按钮），否则含单文本输入框的表单

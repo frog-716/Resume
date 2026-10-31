@@ -9,7 +9,11 @@
 :root{font-family:"PingFang SC","苹方-简","PingFang SC",sans-serif;color:#23222A;background:#F4F3F1;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;--accent:#3D5A80;--accent-hover:#2E4660;--line:#E3E1DC;--line-strong:#CFCCC4;--bench:#F4F3F1;--surface:#FFFFFF;--ink:#23222A;--ink-soft:#43414C;--ink-body:#43414C;--secondary:#6E6A75;--selected:#E9EEF4;--accent-soft:#E9EEF4;--bench-deep:#F7F6F4;--saved:#3E7C4F;--danger:#B3382F;--danger-soft:#F7EAE8;--paper-width:793.7px;--paper-height:1122.5px;--paper-scale:1;--body-size:10.5pt;--body-line:14.28pt;--entry-line:13.42pt;--bullet-gap:2.31pt;--section-gap:6.3pt;--title-bullet-gap:4.2pt;--title-entry-gap:4.62pt;--exp-gap:6.3pt;--entry-bullet-gap:2.52pt}
 *{box-sizing:border-box}html,body,#app{width:100%;height:100%;margin:0}body{overflow:hidden}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #3D5A80;outline-offset:2px}.hidden{display:none!important}.app-shell{display:flex;flex-direction:column;min-width:320px}.topbar{height:72px;flex:0 0 72px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line);gap:18px;z-index:5}.brand-area{display:flex;align-items:center;min-width:0;gap:14px}.resume-title{max-width:min(46vw,540px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:transparent;color:#23222A;font-weight:720;font-size:23px;text-align:left;padding:5px 0;border-radius:4px}.resume-title:hover{color:var(--accent)}.top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.quiet-button,.primary-button,.icon-button,.back-button,.text-button{border:1px solid #E3E1DC;border-radius:12px;background:#fff;color:#43414C;min-height:42px;padding:0 15px;font-size:16px;font-weight:600}.quiet-button:hover,.icon-button:hover,.back-button:hover{border-color:#CFCCC4;background:#FAF9F7}.view-button{min-width:78px}.guide-button{display:flex;align-items:center;gap:8px}.dashed-square{width:18px;height:16px;border:1.5px dashed var(--accent);display:inline-block}.primary-button{background:var(--accent);border-color:var(--accent);color:#fff}.primary-button:hover{background:var(--accent-hover)}.top-actions .primary-button{min-width:118px;height:46px;font-size:16px;font-weight:700}.workspace{flex:1;min-height:0;position:relative}.paper-scroller{height:100%;width:100%;overflow:auto;padding:16px 22px 24px}.paper-space{position:relative;margin:0 auto;width:calc(var(--paper-width)*var(--paper-scale));height:calc(var(--paper-height)*var(--paper-scale));}.paper{position:absolute;top:0;left:0;width:210mm;height:297mm;background:#fff;box-shadow:0 8px 36px #23222A26;transform:scale(var(--paper-scale));transform-origin:top left;overflow:visible;color:#252525}.paper-content{position:absolute;inset:9mm;overflow:visible;font-family:"PingFang SC",sans-serif;font-size:var(--body-size);line-height:var(--body-line);color:#252525}.safe-zone{position:absolute;inset:9mm;border:1px dashed rgba(61,90,128,.45);pointer-events:none;display:none}.paper.guide-on .safe-zone{display:block}.identity{position:relative;text-align:center;margin:0;padding:0}.person-name{min-height:21pt;margin:0 0 6px;font-family:"Times New Roman","PingFang SC",serif;font-size:18pt;line-height:1.25;font-weight:700;text-align:center;outline:none}.contact-row{display:flex;justify-content:center;align-items:center;gap:3px 8px;min-height:1.4em;margin:0;font-family:"PingFang SC",sans-serif;font-size:8.5pt;line-height:1.4;white-space:nowrap}.contact-item{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;white-space:nowrap;outline:none}.contact-item[contenteditable=true]{cursor:text}.contact-icon{width:14px;height:14px;flex:0 0 14px;color:#555}.contact-icon svg{width:100%;height:100%;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.contact-links{margin-top:3px}.link-item{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;white-space:nowrap;outline:none}.link-item a{display:inline-block;overflow:hidden;text-overflow:clip;max-width:100%;color:inherit;text-decoration:none;outline:none}.github-icon{display:inline-flex;flex:0 0 14px;width:14px;height:14px;color:#555}.website-icon{width:14px;height:14px;flex:0 0 14px;color:#555}.website-icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7}.resume-section{position:relative;margin-top:var(--section-gap)}.resume-section.first-section{margin-top:4.5px}.section-heading{display:flex;align-items:center;gap:12px;margin:0;color:#fff;font-family:"PingFang SC",sans-serif;font-size:12pt}.section-heading .section-label{display:inline-flex;align-items:center;justify-content:center;min-width:90px;padding:4px 10px;background:#424242;border-left:4px solid #deddda;border-radius:0 3px 3px 0;color:#fff;font-weight:500;line-height:1.25;outline:none}.section-heading:after{content:"";height:0;flex:1;border-top:1px solid #bbb}.section-body{margin-top:var(--title-bullet-gap);position:relative}.resume-section[data-type="work"] .section-body,.resume-section[data-type="projects"] .section-body,.resume-section[data-type="education"] .section-body{margin-top:var(--title-entry-gap)}.bullet-list{list-style:none;margin:0;padding:0 0 0 17px;position:relative}.bullet{position:relative;display:block;min-height:var(--body-line);margin:0;padding:0;line-height:var(--body-line);font-size:var(--body-size);font-weight:400;text-align:left;outline:none;overflow-wrap:anywhere;white-space:pre-wrap}.bullet:before{content:"•";position:absolute;left:-13px;top:0;color:#424242;user-select:none;pointer-events:none}.bullet+.bullet + .bullet{margin-top:var(--bullet-gap)}.experience{position:relative;margin:0}.experience+.experience{margin-top:var(--exp-gap)}.experience-head{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:start;gap:12px;padding:3px 5px var(--entry-bullet-gap);font-family:"PingFang SC",sans-serif;font-size:calc(var(--body-size) + .5pt);line-height:var(--entry-line);font-weight:700}.experience-head.education-head{grid-template-columns:1fr 3fr 1fr}.entry-field{min-height:var(--entry-line);line-height:var(--entry-line);font-weight:700;overflow-wrap:anywhere;outline:none}.entry-field:nth-child(2){text-align:center}.entry-field:nth-child(3){text-align:right;font-weight:400}.experience .bullet-list{margin-top:0}.experience .bullet-list:empty{display:none}.experience.has-bullets+.experience{margin-top:var(--exp-gap)}.bullet.drag-over,.experience.drag-over{box-shadow:inset 0 -2px 0 #3D5A80}/* E-06 空列表补充入口：绝对定位不占纸面流、不进 L-19 测量；仅编辑态渲染，
    打印由下方 @media print 与打印快照剥离双重保证不输出。 */
-.empty-section-hint{display:none}.library-view,.trash-view{flex:1;min-height:0;overflow-y:auto;padding:20px 24px 34px}.library-header{display:flex;align-items:center;gap:10px;margin:0 0 18px}.search-wrap{display:flex;align-items:center;gap:9px;height:44px;max-width:520px;flex:1;padding:0 13px;border:1px solid #E3E1DC;border-radius:12px;background:#fff;color:#6E6A75}.search-icon{font-size:24px;line-height:1}.search-wrap input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#23222A;font-size:15px}.icon-button{display:grid;place-items:center;width:44px;height:44px;padding:0}.icon-button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.small-primary{width:44px;height:44px;min-height:44px;padding:0;font-size:25px}.library-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:18px}.library-card{min-width:0;overflow:hidden;border:1px solid #E3E1DC;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,34,42,.06)}.card-meta{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:11px 12px 9px}.card-kind{display:block;margin-bottom:3px;color:#6E6A75;font-size:11px}.card-name{max-width:100%;border:0;border-radius:3px;background:transparent;color:#23222A;font-size:15px;font-weight:700;text-align:left;padding:0;outline:none}.card-name:hover{text-decoration:underline;text-decoration-color:#3D5A80}.card-owner,.card-time{margin-top:3px;color:#6E6A75;font-size:11px;line-height:1.35}.card-actions{display:flex;gap:6px;flex:none}.card-actions button{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink-soft);padding:0;cursor:pointer;transition:border-color .12s ease,color .12s ease,background .12s ease}.card-actions svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.card-actions button:hover{border-color:var(--line-strong);background:var(--bench-deep);color:var(--ink-body)}.card-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}.card-actions button[data-rename-direction]:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.card-actions button[data-delete-direction]:hover{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}.card-paper-frame{position:relative;width:100%;aspect-ratio:210/297;overflow:hidden;border-top:1px solid #F4F3F1;background:#F7F6F4;cursor:pointer}.card-paper{position:absolute;inset:0 auto auto 0;width:793.7px;height:1122.5px;transform:scale(var(--card-scale));transform-origin:top left;background:#fff;box-shadow:0 0 3px #0002;overflow:hidden}.card-paper .paper-content{inset:9mm}.card-paper *{pointer-events:none!important;outline:none!important}.card-paper .safe-zone{display:none!important}.empty-message{padding:34px;text-align:center;color:#6E6A75}.trash-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.trash-header h1{flex:1;margin:0;font-size:20px}.back-button{width:42px;min-height:42px;padding:0;font-size:28px;line-height:1}.text-button{border:0;padding:0 8px;background:transparent;color:#43414C}.danger-text,.danger-button{color:#B3382F}.danger-button{background:#B3382F;border-color:#B3382F}.trash-card-actions button[data-action="restore"]{color:#3E7C4F}.trash-card-actions button[data-action="permanent-delete"]{color:#B3382F}.modal{width:min(420px,calc(100vw - 28px));border:1px solid #E3E1DC;border-radius:18px;padding:0;box-shadow:0 20px 70px #23222A2E;color:#23222A}.modal::backdrop{background:#23222A99;backdrop-filter:blur(2px)}.modal form{padding:24px}.modal h2{margin:0 0 15px;font-size:20px}.modal-label{display:block;margin-bottom:7px;color:#6E6A75;font-size:13px}.modal input{width:100%;height:44px;border:1px solid #E3E1DC;border-radius:10px;padding:0 12px;color:#23222A;font-size:15px}.modal p{margin:0 0 18px;color:#6E6A75;line-height:1.55}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.modal-actions button{min-height:40px}.toast{position:fixed;left:50%;bottom:22px;z-index:20;max-width:min(560px,calc(100vw - 30px));transform:translateX(-50%);padding:11px 16px;border-radius:11px;background:#23222A;color:#fff;font-size:13px;line-height:1.45;box-shadow:0 8px 25px #23222A33}.toast[data-kind="error"]{background:#8C2F26}.toast[data-kind="success"]{background:#356B4A}
+.empty-section-hint{display:none}.library-view,.trash-view{flex:1;min-height:0;overflow-y:auto;padding:20px 24px 34px}.library-header{display:flex;align-items:center;gap:10px;margin:0 0 18px}.search-wrap{display:flex;align-items:center;gap:9px;height:44px;max-width:520px;flex:1;padding:0 13px;border:1px solid #E3E1DC;border-radius:12px;background:#fff;color:#6E6A75}.search-icon{font-size:24px;line-height:1}.search-wrap input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#23222A;font-size:15px}.icon-button{display:grid;place-items:center;width:44px;height:44px;padding:0}.icon-button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.small-primary{width:44px;height:44px;min-height:44px;padding:0;font-size:25px}.library-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:18px}.library-card{min-width:0;overflow:hidden;border:1px solid #E3E1DC;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,34,42,.06)}.card-meta{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:11px 12px 9px}.card-kind{display:block;margin-bottom:3px;color:#6E6A75;font-size:11px}.card-name{max-width:100%;border:0;border-radius:3px;background:transparent;color:#23222A;font-size:15px;font-weight:700;text-align:left;padding:0;outline:none}.card-name:hover{text-decoration:underline;text-decoration-color:#3D5A80}.card-owner,.card-time{margin-top:3px;color:#6E6A75;font-size:11px;line-height:1.35}.card-actions{display:flex;gap:6px;flex:none}.card-actions button{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink-soft);padding:0;cursor:pointer;transition:border-color .12s ease,color .12s ease,background .12s ease}.card-actions svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.card-actions button:hover{border-color:var(--line-strong);background:var(--bench-deep);color:var(--ink-body)}.card-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}.card-actions button[data-rename-direction]:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.card-actions button[data-delete-direction]:hover{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}.card-paper-frame{position:relative;width:100%;aspect-ratio:210/297;overflow:hidden;border-top:1px solid #F4F3F1;background:#F7F6F4;cursor:pointer}.card-paper{position:absolute;inset:0 auto auto 0;width:793.7px;height:1122.5px;transform:scale(var(--card-scale));transform-origin:top left;background:#fff;box-shadow:0 0 3px #0002;overflow:hidden}.card-paper .paper-content{inset:9mm}.card-paper *{pointer-events:none!important;outline:none!important}.card-paper .safe-zone{display:none!important}.empty-message{padding:34px;text-align:center;color:#6E6A75}.trash-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.trash-header h1{flex:1;margin:0;font-size:20px}.back-button{width:42px;min-height:42px;padding:0;font-size:28px;line-height:1}.text-button{border:0;padding:0 8px;background:transparent;color:#43414C}.danger-text{color:#B3382F}/* 危险操作按钮：默认态与普通次要按钮完全一致（同 .quiet-button 的白底/灰边/深灰字），
+   只在悬停时背景轻微泛红以示警告。不再自刷红底——原写法 color 与 background 同为 #B3382F，
+   导致「删除」文字与底色同色而隐形，只剩一个红方块。 */
+.danger-button{transition:background-color .16s ease,border-color .16s ease,color .16s ease}
+.danger-button:hover{background:var(--danger-soft);border-color:#E2BCB7}.trash-card-actions button[data-action="restore"]{color:#3E7C4F}.trash-card-actions button[data-action="permanent-delete"]{color:#B3382F}.modal{width:min(420px,calc(100vw - 28px));border:1px solid #E3E1DC;border-radius:18px;padding:0;box-shadow:0 20px 70px #23222A2E;color:#23222A}.modal::backdrop{background:#23222A99;backdrop-filter:blur(2px)}.modal form{padding:24px}.modal h2{margin:0 0 15px;font-size:20px}.modal-label{display:block;margin-bottom:7px;color:#6E6A75;font-size:13px}.modal input{width:100%;height:44px;border:1px solid #E3E1DC;border-radius:10px;padding:0 12px;color:#23222A;font-size:15px}.modal p{margin:0 0 18px;color:#6E6A75;line-height:1.55}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.modal-actions button{min-height:40px}.toast{position:fixed;left:50%;bottom:22px;z-index:20;max-width:min(560px,calc(100vw - 30px));transform:translateX(-50%);padding:11px 16px;border-radius:11px;background:#23222A;color:#fff;font-size:13px;line-height:1.45;box-shadow:0 8px 25px #23222A33}.toast[data-kind="error"]{background:#8C2F26}.toast[data-kind="success"]{background:#356B4A}
 @media(max-width:900px){.topbar{height:auto;min-height:68px;flex-basis:auto;padding:10px 14px;align-items:flex-start}.brand-area{flex-direction:column;align-items:flex-start;gap:0}.resume-title{font-size:19px;max-width:42vw}.top-actions{gap:6px}.quiet-button,.primary-button{min-height:38px;padding:0 10px;font-size:13px;border-radius:9px}.view-button{min-width:58px}.top-actions .primary-button{min-width:90px;height:40px;font-size:14px}.paper-scroller{padding:12px 8px 20px}.library-view,.trash-view{padding:14px}.library-grid{gap:12px}.card-meta{padding:8px}.card-name{font-size:13px}.card-time,.card-owner{font-size:10px}}
 @media(max-width:620px){.library-grid{grid-template-columns:1fr}.topbar{gap:7px}.brand-area{max-width:36vw}.resume-title{max-width:36vw;font-size:17px}.top-actions{gap:4px}.guide-button{gap:4px}.top-actions .primary-button{min-width:76px;padding:0 8px}.paper-scroller{padding-left:0;padding-right:0}.contact-row{gap:4px}}
 @media print{html,body,#app{width:210mm;height:auto;min-height:0;overflow:visible;background:#fff}.topbar,.library-view,.trash-view,.toast,.contact-add-menu,#sort-handle,.empty-section-hint,.boundary{display:none!important}.workspace,.paper-scroller,.paper-space{display:block!important;width:210mm!important;height:297mm!important;overflow:visible!important;margin:0!important;padding:0!important}.paper-space{transform:none!important}.paper{position:relative!important;left:0!important;top:0!important;width:210mm!important;height:297mm!important;transform:none!important;box-shadow:none!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.paper-content{inset:9mm!important;overflow:hidden!important}.safe-zone{display:none!important}.paper.is-overflow:after{display:none!important}a{color:#111;text-decoration:none}@page{size:A4;margin:0}}
@@ -46,7 +50,7 @@
 .sortable.drag-source{pointer-events:none}
 .sortable.drag-source > *{visibility:hidden}
 .sortable.drag-source::after{content:'';position:absolute;inset:0;border:2px dashed var(--accent);border-radius:6px;background:rgba(61,90,128,.07);pointer-events:none}
-.drag-ghost{position:fixed;z-index:80;pointer-events:none;opacity:.95;background:#fff;box-shadow:0 8px 24px #23222A29}
+.drag-ghost{position:fixed;z-index:80;pointer-events:none;opacity:.95;background:#fff;box-shadow:0 8px 24px #23222A29;will-change:transform;transform-origin:center}
 .boundary{position:absolute;top:297mm;left:0;right:0;border-top:2px solid #B3382F;z-index:4;display:none;pointer-events:none}
 .boundary span{position:absolute;right:0;top:2px;background:#F7EAE8;color:#8C2F26;padding:2px 8px;font:12px/1.5 "PingFang SC",sans-serif;white-space:nowrap}
 .paper.is-overflow .boundary{display:block}
@@ -223,6 +227,22 @@ body { overflow: hidden; }
   border-color: #e2c4c0;
   background: #fff8f7;
 }
+/* 新建方向弹窗：方向名称输入框与选择模板下拉框并排同一行，
+   下拉框改用与输入框同款圆角（10px）、同边框色，并自带下拉箭头。 */
+.direction-fields { display: flex; gap: 10px; align-items: center; }
+.direction-fields .direction-name-field { flex: 1.6; min-width: 0; }
+.direction-fields .direction-template-field {
+  flex: 1; min-width: 0;
+  border: 1px solid #E3E1DC; border-radius: 10px; background: #fff; color: #23222A;
+  padding: 0 30px 0 12px;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5L6 7.5L9 4.5' stroke='%2343414C' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.direction-fields .direction-template-field:focus {
+  outline: none; border-color: #3D5A80; box-shadow: 0 0 0 2px rgba(61, 90, 128, .15);
+}
+.direction-fields .direction-template-field option[value=""] { color: #bbb; }
 .card-paper-frame {
   border-top-color: #efede9;
   background: #f8f7f5;
@@ -245,6 +265,7 @@ body { overflow: hidden; }
   .small-primary,
   .card-name,
   .card-actions button[data-delete-direction] { transition: none; }
+  .danger-button { transition: none; }
   .library-card.direction-card:hover,
   .small-primary:hover,
   .card-actions button[data-delete-direction]:hover { transform: none; }
@@ -298,19 +319,18 @@ body { overflow: hidden; }
   <dialog class="modal" id="direction-dialog">
     <form method="dialog" id="direction-form">
       <h2>新建简历方向</h2>
-      <label class="modal-label" for="direction-name">方向名称</label>
-      <input id="direction-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位">
-      <label class="modal-label" for="direction-template">选择模板</label>
-      <select id="direction-template" name="template"></select>
-      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="create">创建</button></div>
+      <div class="direction-fields">
+        <input id="direction-name" name="name" class="direction-name-field" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位" aria-label="方向名称">
+        <select id="direction-template" name="template" class="direction-template-field" aria-label="选择模板"></select>
+      </div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" type="submit" value="create">创建</button></div>
     </form>
   </dialog>
 
   <dialog class="modal" id="rename-dialog">
     <form method="dialog" id="rename-form">
       <h2>修改方向名称</h2>
-      <label class="modal-label" for="rename-name">方向名称</label>
-      <input id="rename-name" name="name" maxlength="80" required autocomplete="off">
+      <input id="rename-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位" aria-label="方向名称">
       <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="rename">保存</button></div>
     </form>
   </dialog>
@@ -319,7 +339,7 @@ body { overflow: hidden; }
     <form method="dialog" id="confirm-form">
       <h2 id="confirm-title">请确认</h2>
       <p id="confirm-message"></p>
-      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button danger-button" value="confirm" id="confirm-action">确认</button></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="quiet-button danger-button" value="confirm" id="confirm-action">确认</button></div>
     </form>
   </dialog>
 
@@ -389,46 +409,93 @@ function createEmptyResumeContent() {
   };
 }
 
-/** Return a small fictional first-page example for UI development. */
+/**
+ * Return the "原型" template: a complete, ATS-friendly sample resume for a
+ * Forward Deployed Engineer (FDE).
+ *
+ * Content rules kept deliberately plain so parsers keep it intact:
+ * - Four standard sections in a fixed order, no graphics, no columns tricks.
+ * - Each bullet is one achievement: action verb + scope + measurable result.
+ * - Keywords (FDE, RAG, Agent, Kubernetes, POC, Technical Discovery …) appear
+ *   organically inside sentences instead of a keyword dump.
+ * Contact details use placeholder digits and example.com on purpose; the file
+ * ships in the extension bundle and must never carry real personal data.
+ */
 function createSampleResumeContent() {
   const content = createEmptyResumeContent();
 
-  content.identity.name = text("林舟");
+  content.identity.name = text("陈叙");
   content.identity.contacts = {
-    phone: text("010-0000-0000"),
-    email: text("lin.zhou@example.com"),
-    wechat: text("linzhou-demo"),
+    phone: text("138-0000-0000"),
+    email: text("chen.xu@example.com"),
+    wechat: text("chenxu-fde"),
   };
   content.identity.links = {
     github: {
       type: "github",
-      href: "https://example.com/lin-zhou",
+      href: "https://example.com/chenxu/github",
       label: text("GitHub"),
     },
     personalWebsite: {
       type: "personalWebsite",
-      href: "https://example.com/lin-zhou/profile",
-      label: text("个人网页"),
+      href: "https://example.com/chenxu",
+      label: text("作品集"),
     },
   };
 
   content.sections[0].bullets = [
-    { id: "skill-1", html: "熟悉前端页面开发与组件拆分" },
-    { id: "skill-2", html: "能用清晰的数据结构整理业务信息" },
-    { id: "skill-3", html: "关注可读性、键盘操作与页面适配" },
+    { id: "skill-1", html: "<b>语言与框架</b>：Python、TypeScript、Go、Java、SQL、Rust；FastAPI、gRPC、React、Next.js、Node.js、Django、Celery" },
+    { id: "skill-2", html: "<b>AI 工程</b>：RAG、Agentic Workflow、Function Calling、LangGraph、vLLM、SFT / DPO 微调、评测体系与幻觉治理" },
+    { id: "skill-3", html: "<b>数据与云原生</b>：PostgreSQL、ClickHouse、Kafka、Flink、Airflow、Hive、Kubernetes、Terraform、AWS / 阿里云" },
+    { id: "skill-4", html: "<b>交付方法论</b>：Technical Discovery、POC 验证、Solution Architecture、交付风险管控、SLA 保障、可观测性与交付资产管理" },
+    { id: "skill-5", html: "<b>证书与语言</b>：AWS Solutions Architect Professional、CKA、TOGAF；雅思 8.0，可全英文独立驻场交付与方案答辩" },
   ];
 
   content.sections[1].entries = [
     {
       id: "work-entry-1",
       columns: [
-        text("星桥科技（虚构）"),
-        text("前端工程师"),
-        text("2022.06—至今"),
+        text("字节跳动 · 火山引擎"),
+        text("高级前向部署工程师（Senior FDE）"),
+        text("2022.07—至今"),
       ],
       bullets: [
-        { id: "work-bullet-1", html: "维护内部运营台，让常用操作更容易查找。" },
-        { id: "work-bullet-2", html: "与设计和产品同事协作，整理页面状态与交互细节。" },
+        { id: "work-bullet-1", html: "主导 12 家头部客户（金融、汽车、零售）的大模型应用落地，交付周期由 14 周压缩至 7 周，客户续约率 <b>94%</b>。" },
+        { id: "work-bullet-2", html: "设计 RAG 知识中台并覆盖 6 类知识库场景，知识命中率 68%→<b>96%</b>，人工转接率降 41%，单客户年省 1200 万元。" },
+        { id: "work-bullet-3", html: "沉淀可复用 FDE 交付脚手架（FastAPI + LangGraph + 自动评测），输出 24 个行业模板，冷启动时间缩短 <b>60%</b>。" },
+        { id: "work-bullet-4", html: "带领 6 人虚拟团队对接客户 CTO / CIO，完成 20+ 次技术尽调与方案评审，推动 4 个千万级订单签约，回款 1.1 亿。" },
+        { id: "work-bullet-12", html: "建立交付复盘与故障归档机制，沉淀 30 篇方案与故障文档并纳入新人培养，人均效率提升 <b>35%</b>，故障复发率降 28%。" },
+        { id: "work-bullet-14", html: "推动 CI/CD 与自动化回归在交付项目落地，上线缺陷率下降 <b>47%</b>，交付 SLA 达成率由 91% 升至 99.2%，恢复 8 分钟。" },
+        { id: "work-bullet-16", html: "申请发明专利 3 项（推理调度、缓存复用、检索重排），均进入实质审查并在生产集群落地，吞吐提升 1.8 倍。" },
+        { id: "work-bullet-18", html: "主讲 5 场客户技术工作坊，覆盖 200+ 业务与技术决策人，孵化 8 个 POC 并转化 3 个百万级订单，平均 6 周成单。" },
+      ],
+    },
+    {
+      id: "work-entry-2",
+      columns: [
+        text("智谱 AI"),
+        text("解决方案架构师（FDE）"),
+        text("2020.03—2022.06"),
+      ],
+      bullets: [
+        { id: "work-bullet-5", html: "作为 Forward Deployed Engineer 负责 API 售前验证与现场交付，支撑 45+ 客户 POC，转化率 <b>71%</b>，回款 6800 万元。" },
+        { id: "work-bullet-6", html: "构建多模态文档解析流水线（OCR + LayoutLM + RAG），合同字段抽取准确率 <b>97.2%</b>，人工复核成本降 72%。" },
+        { id: "work-bullet-7", html: "主导私有化部署方案（Kubernetes + vLLM + 信创），落地 15 家客户，单集群 300+ QPS、P99 稳定在 720ms，续费 3 家。" },
+        { id: "work-bullet-8", html: "牵头麒麟 / 昇腾信创环境适配，完成 4 个标杆客户上线，推理成本下降 38%，客户满意度由 4.3 升至 4.8，纳入交付包。" },
+        { id: "work-bullet-13", html: "搭建模型效果评测集（2000 条样本 + 双人标注），把 POC 验收标准量化为 6 项可复现指标，争议率降 60%。" },
+      ],
+    },
+    {
+      id: "work-entry-3",
+      columns: [
+        text("商汤科技"),
+        text("后端工程师"),
+        text("2018.07—2020.02"),
+      ],
+      bullets: [
+        { id: "work-bullet-9", html: "负责城市视觉中枢的数据接入与任务调度，日均处理 2.4 亿事件流、跨 7 地机房，服务可用性 <b>99.97%</b>，零重大事故。" },
+        { id: "work-bullet-10", html: "重构批处理链路（Airflow + ClickHouse 分区优化），核心报表产出由 5 小时降至 18 分钟，资源成本降 45%。" },
+        { id: "work-bullet-11", html: "主导数据质量治理，制定埋点与校验规范并接入 CI，脏数据率由 9% 降至 <b>0.5%</b>，下游投诉工单清零，年省 300 万。" },
       ],
     },
   ];
@@ -437,24 +504,52 @@ function createSampleResumeContent() {
     {
       id: "project-entry-1",
       columns: [
-        text("城市绿行数据看板（虚构）"),
-        text("个人项目"),
-        text("2024.01—2024.04"),
+        text("国有大行智能合规审查 Agent"),
+        text("技术负责人"),
+        text("2023.09—2024.05"),
       ],
       bullets: [
-        { id: "project-bullet-1", html: "把虚构的出行数据整理为可筛选的图表页面。" },
-        { id: "project-bullet-2", html: "补充空数据和窄屏状态，方便演示不同使用场景。" },
+        { id: "project-bullet-1", html: "基于 LangGraph 构建多步审查 Agent，串联 8 类监管规则与 12 份制度文件，单份材料审核由 50 分钟降至 <b>2.5 分钟</b>。" },
+        { id: "project-bullet-2", html: "Function Calling 对接行内风控与影像系统，审查结论可追溯、可审计，规则覆盖率 100%，误报率 <b>3.2%</b>，复核量降 80%。" },
+        { id: "project-bullet-3", html: "单日处理 3.6 万份材料、峰值并发 500，平均响应 6 秒，一次性通过等保三级与行内红队渗透测试，支撑 6 个业务条线。" },
+        { id: "project-bullet-4", html: "沉淀规则配置化能力，新监管规则接入由 3 天缩短至 <b>2 小时</b>，业务方自助上线，可版本回滚，年省研发投入 400 人天。" },
+      ],
+    },
+    {
+      id: "project-entry-2",
+      columns: [
+        text("制造业设备预测性维护平台"),
+        text("交付负责人（驻场 6 个月）"),
+        text("2024.07—2025.01"),
+      ],
+      bullets: [
+        { id: "project-bullet-5", html: "驻场梳理 6 条产线、800+ 传感器数据，构建时序特征管道与异常检测模型，非计划停机下降 <b>31%</b>，OEE 提升 6%。" },
+        { id: "project-bullet-6", html: "端到端交付采集—特征—告警—工单闭环，培训客户 30 人自主运维，二期合同续签 1200 万元并列为集团标杆。" },
+        { id: "project-bullet-7", html: "设计分级告警与值班 SOP，误报率控制在 4% 以内，客户 CSAT 4.9 / 5，方案复制到集团另外 3 个生产基地，续签 3 年。" },
+      ],
+    },
+    {
+      id: "project-entry-3",
+      columns: [
+        text("开源：fde-starter-kit"),
+        text("作者"),
+        text("2025.03—至今"),
+      ],
+      bullets: [
+        { id: "project-bullet-8", html: "开源 FDE 交付脚手架（鉴权、日志、评测、部署），GitHub <b>3.2k</b> Star，120+ 团队用于 POC 与生产交付，周下载 1.2k。" },
+        { id: "project-bullet-9", html: "配套《FDE 交付手册》阅读 12 万+，被 5 家独角兽采纳为新人培训教材，登上 GitHub Trending 日榜，8 场大会引用。" },
       ],
     },
   ];
 
   content.sections[3].columns = [
-    text("2018—2022"),
-    text("海岚大学（虚构）· 信息管理"),
-    text("杭州（虚构）"),
+    text("2014—2018"),
+    text("清华大学 · 计算机科学与技术 · 学士"),
+    text("北京"),
   ];
   content.sections[3].bullets = [
-    { id: "education-bullet-1", html: "课程项目中整理虚构数据并制作展示说明。" },
+    { id: "education-bullet-1", html: "ACM-ICPC 全球总决赛（World Finals）参赛选手，亚洲区域赛金牌（队内主代码手，赛区第 2 名），校队队长 2 年。" },
+    { id: "education-bullet-2", html: "GPA 3.9 / 4.0（专业前 2%），国家奖学金 3 次，清华大学优秀毕业生；辅修统计学，校级优秀毕设，发表 EI 论文 2 篇。" },
   ];
 
   return content;
@@ -941,6 +1036,67 @@ function* descendingBodySizes(maxBodyPt, minBodyPt, bodyStepPt) {
   if (Math.abs(lastCandidate - minBodyPt) > 1e-10) yield minBodyPt;
 }
 
+/* ===== domain-editor.mjs ===== */
+// Pure editor-side business rules for resume directions and ordering.
+//
+// No DOM, no chrome.* APIs, no storage — safe to unit test in plain Node.
+// These mirror the rules that still run inside sidepanel.mjs so the
+// acceptance-critical behaviour (direction lifecycle, ordering, delete guard)
+// has real coverage instead of relying on manual Chrome verification alone.
+
+const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+
+function uid(prefix = 'item') {
+  const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${id}`;
+}
+
+function nowIso() { return new Date().toISOString(); }
+
+// S-03 / S-01: a direction owns one auto-saved current draft. The content and
+// layout are deep-cloned so the new direction evolves independently of its
+// template (modifying one never leaks into the other).
+function makeDirection(name, content = createEmptyResumeContent(), currentLayout = DEFAULT_LAYOUT) {
+  const createdAt = nowIso();
+  return {
+    id: uid('direction'),
+    name: String(name || '我的简历').trim() || '我的简历',
+    createdAt,
+    currentDraft: { content: clone(content), layout: clone(currentLayout), updatedAt: createdAt },
+  };
+}
+
+// First run: exactly one direction seeded with fictional sample content.
+function initialState() {
+  const direction = makeDirection('我的简历', createSampleResumeContent());
+  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
+}
+
+// S-07: direction room orders by most-recent-edit time, newest first.
+// A direction with no usable date sorts as the oldest (key 0).
+function directionSortKey(direction) {
+  const raw = direction?.currentDraft?.updatedAt || direction?.createdAt;
+  if (!raw) return 0;
+  const time = Date.parse(raw);
+  return Number.isNaN(time) ? 0 : time;
+}
+
+// E-07 / S-06: ordering stays inside one list/section. Reorder `items` to match
+// `orderedIds`, keeping only ids that exist in `items`; unknown or missing ids
+// are dropped rather than crashing (mirrors finishDrag in sidepanel).
+function reorderListById(orderedIds, items) {
+  const map = new Map(items.map((item) => [item.id, item]));
+  return orderedIds.map((id) => map.get(id)).filter(Boolean);
+}
+
+// S-06: at least one direction must remain; the last one cannot be deleted.
+function canDeleteDirection(directions, id) {
+  if (directions.length <= 1) return false;
+  return directions.some((direction) => direction.id === id);
+}
+
 /* ===== text-runs.mjs ===== */
 /**
  * Shared text-run splitting for resume fields.
@@ -1003,15 +1159,92 @@ function applyRunsToElement(root) {
 }
 
 /** Re-split an edited field: unwrap existing run spans, then wrap again. */
-function normalizeFieldRuns(element) {
+function normalizeFieldRuns(element, options = {}) {
   if (!element) return;
+  // 重写子节点会破坏光标所在的文本节点，浏览器随后把光标收回容器开头。
+  // 正在编辑的字段必须先记下字符偏移，重写完成后再放回去。
+  const keepCaret = options.preserveCaret
+    && (document.activeElement === element || element.contains(document.activeElement));
+  const caret = keepCaret ? readCaretOffset(element) : null;
   element.querySelectorAll('.run-zh, .run-en, .run-num').forEach((span) => {
     span.replaceWith(...span.childNodes);
   });
   applyRunsToElement(element);
+  if (caret != null) writeCaretOffset(element, caret);
+}
+
+/** 把「第几个文本节点 + 节点内偏移」换算成整段的字符偏移；越界时夹到合法范围。 */
+function caretIndexFrom(nodeLengths, nodeIndex, offsetInNode) {
+  if (!Array.isArray(nodeLengths) || nodeIndex < 0 || nodeIndex >= nodeLengths.length) return null;
+  let total = 0;
+  for (let index = 0; index < nodeIndex; index += 1) total += nodeLengths[index];
+  const clamped = Math.max(0, Math.min(offsetInNode, nodeLengths[nodeIndex]));
+  return total + clamped;
+}
+
+/** 把整段字符偏移换算回「第几个文本节点 + 节点内偏移」；超出末尾时贴到最后一个节点结尾。 */
+function caretLocation(nodeLengths, caretIndex) {
+  if (!Array.isArray(nodeLengths) || !nodeLengths.length) return null;
+  if (!Number.isFinite(caretIndex) || caretIndex < 0) return null;
+  let remaining = caretIndex;
+  for (let index = 0; index < nodeLengths.length; index += 1) {
+    if (remaining <= nodeLengths[index]) return { nodeIndex: index, offsetInNode: remaining };
+    remaining -= nodeLengths[index];
+  }
+  const last = nodeLengths.length - 1;
+  return { nodeIndex: last, offsetInNode: nodeLengths[last] };
+}
+
+function textNodesOf(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  return nodes;
+}
+
+function textLengthOf(node) {
+  if (node.nodeType === Node.TEXT_NODE) return (node.nodeValue || '').length;
+  if (node.nodeType !== Node.ELEMENT_NODE) return 0;
+  return (node.textContent || '').length;
+}
+
+/** 读取 root 内当前光标的字符偏移；无光标、有选区或光标不在 root 内时返回 null。 */
+function readCaretOffset(root) {
+  if (!root) return null;
+  const selection = window.getSelection?.();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed) return null;
+  if (range.startContainer !== root && !root.contains(range.startContainer)) return null;
+  if (range.startContainer.nodeType === Node.TEXT_NODE) {
+    const nodes = textNodesOf(root);
+    const index = nodes.indexOf(range.startContainer);
+    if (index === -1) return null;
+    return caretIndexFrom(nodes.map((node) => (node.nodeValue || '').length), index, range.startOffset);
+  }
+  let offset = 0;
+  Array.from(root.childNodes).slice(0, range.startOffset).forEach((child) => { offset += textLengthOf(child); });
+  return offset;
+}
+
+/** 把光标放回 root 内的指定字符偏移；节点已被替换时按最新节点重算落点。 */
+function writeCaretOffset(root, offset) {
+  if (!root || offset == null) return false;
+  const nodes = textNodesOf(root);
+  if (!nodes.length) return false;
+  const location = caretLocation(nodes.map((node) => (node.nodeValue || '').length), offset);
+  if (!location) return false;
+  const range = document.createRange();
+  range.setStart(nodes[location.nodeIndex], location.offsetInNode);
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
 }
 
 /* ===== sidepanel.mjs ===== */
+
 
 
 
@@ -1019,9 +1252,13 @@ const PAPER_WIDTH_PX = 793.7;
 const PAPER_HEIGHT_PX = 1122.5;
 const STORE_KEY = 'resume-sidepanel-store-v1';
 const UNREADABLE_BACKUP_KEY = `${STORE_KEY}-unreadable-backup`;
-const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
 const SECTION_LABELS = { skills: '专业技能', work: '工作经历', projects: '项目经历', education: '教育背景' };
-const COLUMN_PLACEHOLDERS = ['单位 / 项目', '岗位 / 职责', '日期'];
+// 工作/项目经历的条目三栏占位：按区块区分。
+// 工作经历：单位=公司、岗位=岗位；项目经历：单位=项目、岗位=职责；第三栏都是日期。
+const COLUMN_PLACEHOLDERS = {
+  work: ['公司', '岗位', '日期'],
+  projects: ['项目', '职责', '日期'],
+};
 const REQUIRED_FONTS = [
   { family: '"PingFang SC"', sample: '简历', role: '中文字体（苹方）' },
   { family: '"Times New Roman"', sample: 'Resume', role: '英文与数字字体（Times New Roman）' },
@@ -1074,12 +1311,6 @@ let sortHover = null;
 let pendingRenameId = null;
 let toastTimer = null;
 
-function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function uid(prefix = 'item') {
-  const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  return `${prefix}-${id}`;
-}
-function nowIso() { return new Date().toISOString(); }
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
@@ -1105,19 +1336,6 @@ function fmtMinute(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
-}
-function makeDirection(name, content = createEmptyResumeContent(), currentLayout = DEFAULT_LAYOUT) {
-  const createdAt = nowIso();
-  return {
-    id: uid('direction'),
-    name: String(name || '我的简历').trim() || '我的简历',
-    createdAt,
-    currentDraft: { content: clone(content), layout: clone(currentLayout), updatedAt: createdAt },
-  };
-}
-function initialState() {
-  const direction = makeDirection('我的简历', createSampleResumeContent());
-  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
 }
 function extensionStorageGet(key) {
   if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.get(key, (value) => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(value[key])));
@@ -1359,7 +1577,7 @@ function createExperience(entry, sectionType, editable) {
   const head = document.createElement('div');
   head.className = 'experience-head';
   entry.columns.forEach((column, index) => {
-    const placeholder = sectionType === 'education' ? '' : COLUMN_PLACEHOLDERS[index];
+    const placeholder = sectionType === 'education' ? '' : (COLUMN_PLACEHOLDERS[sectionType]?.[index] ?? '');
     head.append(editable
       ? makeEditable(column.html, `column|${sectionType}|${entry.id}|${index}`, `条目第${index + 1}栏`, 'entry-field', column.align, placeholder)
       : textSpan(column.html, column.align));
@@ -1845,7 +2063,7 @@ function onPaste(event) {
     }
     if (lines.length) renderPaper();
   } else { document.execCommand('insertText', false, raw.replace(/\r?\n/g, ' ')); updateContentFromElement(element); }
-  normalizeFieldRuns(element); scheduleFit(); scheduleSave();
+  normalizeFieldRuns(element, { preserveCaret: true }); scheduleFit(); scheduleSave();
 }
 function onCompositionStart() {
   // 输入法组字期间 beforeinput 不会压入撤销快照，若这里也不压，
@@ -1853,14 +2071,14 @@ function onCompositionStart() {
   if (!composing) pushUndo(true);
   composing = true;
 }
-function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); } }
+function onCompositionEnd(event) { composing = false; const element = event.target.closest('[data-edit]'); if (element) { updateContentFromElement(element); normalizeFieldRuns(element, { preserveCaret: true }); scheduleFit(); scheduleSave(); } }
 // 取消组字（候选框按 Esc / 焦点被移走 / 输入目标变更）不会派发 compositionend。
 // 不在这里收尾，composing 会永久卡在 true：onInput 从此直接 return，
 // 用户之后打的每一个字都不落盘，关掉侧边栏即全部丢失。
 function onCompositionCancel(event) {
   composing = false;
   const element = event.target.closest('[data-edit]');
-  if (element) { updateContentFromElement(element); normalizeFieldRuns(element); scheduleFit(); scheduleSave(); }
+  if (element) { updateContentFromElement(element); normalizeFieldRuns(element, { preserveCaret: true }); scheduleFit(); scheduleSave(); }
 }
 function onInput(event) { const element = event.target.closest('[data-edit]'); if (!element || composing) return; updateContentFromElement(element); scheduleFit(); scheduleSave(); }
 function onBeforeInput(event) { const element = event.target.closest('[data-edit]'); if (element && !composing) pushUndo(false); }
@@ -1881,16 +2099,27 @@ function installDrag() {
     const ghost = item.cloneNode(true);
     ghost.classList.remove('drag-source', 'selected', 'dragging');
     ghost.classList.add('drag-ghost');
+    // 拖影只负责"跟着手走"的视觉：剥掉编辑与数据属性，减少节点负担和内存。
+    ghost.removeAttribute('data-item-id');
+    ghost.querySelectorAll('[contenteditable]').forEach((n) => n.removeAttribute('contenteditable'));
+    ghost.querySelectorAll('[data-edit],[data-placeholder],[data-item-id],[id]').forEach((n) => {
+      n.removeAttribute('data-edit'); n.removeAttribute('data-placeholder');
+      n.removeAttribute('data-item-id'); n.removeAttribute('id');
+    });
     ghost.style.position = 'fixed';
     ghost.style.margin = '0';
     ghost.style.left = `${rect.left}px`;
     ghost.style.top = `${rect.top}px`;
     ghost.style.width = `${rect.width}px`;
     ghost.style.height = `${rect.height}px`;
+    ghost.style.transform = 'translate3d(0,0,0)';
     document.body.append(ghost);
     dragState = {
       item, list, section: item.dataset.section, kind: item.dataset.sortKind, moved: false,
-      pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top,
+      pointerId: event.pointerId,
+      grabX: event.clientX, grabY: event.clientY, itemRect: rect,
+      // 起拖缓存每个可排项的中点：拖动中只比数值，不再每帧量布局。
+      sortCache: measureSortables(list, item),
       width: rect.width, height: rect.height, ghost, rafId: 0, lastX: event.clientX, lastY: event.clientY,
       // 起拖时的顺序：落点没变就不记撤销、不落盘。
       originalIds: Array.from(list.querySelectorAll(':scope > .sortable')).map((el) => el.dataset.itemId),
@@ -1909,9 +2138,9 @@ function installDrag() {
     dragState.rafId = requestAnimationFrame(() => {
       dragState.rafId = 0;
       if (!dragState) return;
-      dragState.ghost.style.left = `${dragState.lastX - dragState.offsetX}px`;
-      dragState.ghost.style.top = `${dragState.lastY - dragState.offsetY}px`;
-      // 真实搬动空位框：被指向的行当场"让位"，其余行依次让开。
+      // 拖影走 transform（合成层），不再每帧改 left/top 触发布局。
+      dragState.ghost.style.transform = `translate3d(${dragState.lastX - dragState.grabX}px, ${dragState.lastY - dragState.grabY}px, 0)`;
+      // 真实搬动空位框：被指向的行当场"让位"，其余行以 FLIP 平滑让开。
       moveDraggedToTarget(dragState.lastY);
       followHandleToFrame();
     });
@@ -1943,31 +2172,60 @@ function nextSortableAfter(element) {
   while (node && !node.classList.contains('sortable')) node = node.nextElementSibling;
   return node;
 }
+// 量一次每个可排项的中点，缓存给拖动期做 O(1) 落点判断（不再每帧 getBoundingClientRect）。
+function measureSortables(list, dragged) {
+  const out = [];
+  for (const el of list.children) {
+    if (el === dragged || !el.classList.contains('sortable')) continue;
+    const r = el.getBoundingClientRect();
+    out.push({ el, mid: r.top + r.height / 2 });
+  }
+  return out;
+}
 // 落点计算与真实搬动：指针落在某一行上半部 → 插到它之前（那一行"让位"下移，
 // 空位框停在它的位置）；落在下半部 → 落到它之后；越过末行 → 排到末尾。
 // 被拖条目本身就在流里（它变成了空位框），所以其它行会实时围着它重排，
-// 用户看到的就是"哪一行让开了、哪一格空着"。
+// 用户看到的就是"哪一行让开了、哪一格空着"；让开/归位用 FLIP 平滑过渡。
 function moveDraggedToTarget(clientY) {
-  const { item, list } = dragState;
-  const siblings = Array.from(list.children).filter((el) => el !== item && el.classList.contains('sortable'));
+  const { item, list, sortCache } = dragState;
+  if (!sortCache) return;
   let before = null;
-  for (const sibling of siblings) {
-    const rect = sibling.getBoundingClientRect();
-    if (clientY < rect.top + rect.height / 2) { before = sibling; break; }
-  }
+  for (const c of sortCache) { if (clientY < c.mid) { before = c.el; break; } }
   const next = nextSortableAfter(item);
   // 位置没变就不搬：一次 insertBefore 会触发整列表重排，没必要就别动。
   if (before ? next === before : next === null) return;
   dragState.moved = true;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  // 先收掉上一次让位动画，保证本次 FLIP 量到的都是纯布局位置，不叠加位移。
+  for (const c of sortCache) c.el.getAnimations().forEach((a) => a.cancel());
+  const olds = sortCache.map((c) => [c.el, c.el.getBoundingClientRect().top]);
   if (before) list.insertBefore(item, before);
   else list.append(item);
+  // 边量新位置边起动画：每个元素都量它自己（此刻尚未动画）的布局位，缓存才准。
+  const nextCache = [];
+  for (const [el, oldTop] of olds) {
+    const r = el.getBoundingClientRect();
+    nextCache.push({ el, mid: r.top + r.height / 2 });
+    if (reduce) continue;
+    const delta = oldTop - r.top;
+    if (Math.abs(delta) > 0.5) {
+      el.animate(
+        [{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }],
+        { duration: 170, easing: 'cubic-bezier(.2,.72,.3,1)' }
+      );
+    }
+  }
+  // 缓存的中点与空位框位置只在真正搬动时刷新一次。
+  dragState.sortCache = nextCache;
+  dragState.itemRect = item.getBoundingClientRect();
 }
 // 拖动中手柄跟着空位框走，否则手柄留在原地、和真正要落的位置脱节。
 function followHandleToFrame() {
   if (!dragState) return;
   const handle = elements.sortHandle;
-  const rect = dragState.item.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
+  // 空位框只在换位时移动，位置已缓存在 itemRect；不再每帧量一次布局。
+  const rect = dragState.itemRect;
+  if (!rect || !rect.width || !rect.height) return;
   handle.hidden = false;
   handle.style.left = `${sortHandleLeft()}px`;
   handle.style.top = `${sortHandleTop(rect)}px`;
@@ -1978,7 +2236,25 @@ function finishDrag() {
   elements.sortHandle.classList.remove('is-dragging');
   if (state.rafId) cancelAnimationFrame(state.rafId);
   state.item.classList.remove('drag-source', 'dragging');
-  state.ghost?.remove();
+  // 落位收尾：拖影就地淡出（并轻微收一下），不再"啪"地消失。
+  if (state.ghost) {
+    const ghost = state.ghost;
+    const gx = state.lastX - state.grabX;
+    const gy = state.lastY - state.grabY;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (reduce) ghost.remove();
+    else {
+      ghost.animate(
+        [
+          { transform: `translate3d(${gx}px, ${gy}px, 0) scale(1)`, opacity: 0.95 },
+          { transform: `translate3d(${gx}px, ${gy}px, 0) scale(0.98)`, opacity: 0 },
+        ],
+        { duration: 140, easing: 'cubic-bezier(.2,.72,.3,1)' }
+      ).onfinish = () => ghost.remove();
+      // 兜底：动画被系统取消时也清掉，避免拖影残留。
+      setTimeout(() => ghost.remove(), 260);
+    }
+  }
   // 落点是否真的变化：与起拖时的顺序对比，没变就不记撤销、不重排、不落盘。
   const ids = Array.from(state.list.querySelectorAll(':scope > .sortable')).map((item) => item.dataset.itemId);
   const changed = ids.length !== state.originalIds.length || ids.some((id, index) => id !== state.originalIds[index]);
@@ -1988,15 +2264,13 @@ function finishDrag() {
   if (state.kind === 'experience') {
     const section = draft.sections.find((item) => item.type === state.section);
     if (!section?.entries) { scheduleFit(); scheduleSave(); return; }
-    const map = new Map(section.entries.map((item) => [item.id, item]));
-    section.entries = ids.map((id) => map.get(id)).filter(Boolean);
+    section.entries = reorderListById(ids, section.entries);
   } else {
     // 列表定位不到时安全退出：DOM 顺序已经变了，但草稿不乱写，
     // 重新渲染回到数据里的顺序即可（避免对 null 调用 splice 崩溃）。
     const list = findBulletList(state.section, ids[0]);
     if (!list) { scheduleFit(); scheduleSave(); return; }
-    const map = new Map(list.map((item) => [item.id, item]));
-    const sorted = ids.map((id) => map.get(id)).filter(Boolean); list.splice(0, list.length, ...sorted);
+    list.splice(0, list.length, ...reorderListById(ids, list));
   }
   // 不再 renderPaper()：拖动已通过 insertBefore 把真实 DOM 排好顺序，
   // 重建整页反而带来一次性大开销（销毁+重建全部 contenteditable）且让界面闪一下。
@@ -2019,11 +2293,6 @@ function renderDirections() {
   elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
   updateCardScales();
 }
-function directionSortKey(direction) {
-  const raw = direction?.currentDraft?.updatedAt || direction?.createdAt || 0;
-  const time = Date.parse(raw);
-  return Number.isNaN(time) ? 0 : time;
-}
 function renderDirectionCard(direction) {
   const article = document.createElement('article'); article.className = 'library-card direction-card'; article.dataset.directionId = direction.id;
   article.dataset.current = String(direction.id === activeDirection?.id);
@@ -2044,15 +2313,13 @@ function updateCardScales() {
     if (!mini) return;
     const scale = frame.clientWidth / PAPER_WIDTH_PX;
     mini.style.setProperty('--card-scale', String(scale));
-    // S-07：缩略图要"保留超页内容"。默认 CSS 把相框锁成 210/297 且
-    // overflow:hidden，超过一页的正文会被直接裁掉。这里按内容实际高度
-    // 放开相框高度：短稿不再拖一条空白纸尾，超页稿则整张纸面向下延展。
+    // S-07：缩略图至少显示完整 A4；超页正文则按实际内容向下延展，不裁切。
     // 用 offsetHeight（布局像素）而不是 getBoundingClientRect：后者被
     // transform:scale 缩过，量出来的是缩放后的视觉高度。
     const flow = mini.querySelector('.resume-flow');
     if (!flow) return;
     const paperPaddingPx = 2 * (9 / 25.4) * 96; // 上下各 9mm
-    const naturalHeight = paperPaddingPx + flow.offsetHeight + 2;
+    const naturalHeight = Math.max(PAPER_HEIGHT_PX, paperPaddingPx + flow.offsetHeight + 2);
     mini.style.height = `${naturalHeight.toFixed(2)}px`;
     frame.style.aspectRatio = 'auto';
     frame.style.height = `${(naturalHeight * scale).toFixed(2)}px`;
@@ -2073,26 +2340,31 @@ function confirmAction(message, title = '请确认', actionText = '确认') {
 }
 function openCreateDirection() {
   elements.directionName.value = '';
-  // “示例模板”就是毛坯房：预填一份虚构示例（林舟），一来就有内容可改、
-  // Enter 也能续加，而不是给你一个啥都没有、加不了的空壳。
+  // “原型”是默认模板，直接作为首项并选中：用户点开就能用，不必先展开
+  // 下拉再挑。这里刻意不放 disabled 的占位项——给 disabled option 设
+  // selected 会让部分环境下 select 卡在空值，切换后仍取不到模板。
   const sampleOption = document.createElement('option');
   sampleOption.value = '__sample__';
-  sampleOption.textContent = '示例模板（带示例内容 · 毛坯房）';
+  sampleOption.textContent = '原型';
   elements.directionTemplate.replaceChildren(sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
-  if (activeDirection) elements.directionTemplate.value = activeDirection.id;
+  elements.directionTemplate.value = '__sample__';
   openDialog(elements.directionDialog); elements.directionName.focus();
 }
 async function createDirection() {
   const name = elements.directionName.value.trim();
+  if (!name) return;
   const templateValue = elements.directionTemplate.value;
-  const useSample = templateValue === '__sample__';
-  const template = useSample ? null : (findDirection(templateValue) || activeDirection);
-  if (!name || (!useSample && !template)) return;
-  if (!(await saveNow())) return;
-  const content = useSample ? createSampleResumeContent() : template.currentDraft.content;
-  const layout = useSample ? DEFAULT_LAYOUT : template.currentDraft.layout;
+  const useSample = !templateValue || templateValue === '__sample__';
+  const source = useSample ? null : findDirection(templateValue);
+  if (!useSample && !source) return;
+  // 旧草稿保存失败不该阻塞新建：内容还在内存里，下一次编辑会重试落盘。
+  // 之前这里 return 会让“创建”按钮看起来毫无反应。
+  await saveNow().catch(() => false);
+  const content = useSample ? createSampleResumeContent() : source.currentDraft.content;
+  const layout = useSample ? DEFAULT_LAYOUT : source.currentDraft.layout;
   const direction = makeDirection(name, content, layout);
-  storeState.directions.push(direction); resetEditorState(direction); await persistStore();
+  storeState.directions.push(direction); resetEditorState(direction);
+  try { await persistStore(); } catch (error) { showToast(`已创建，但保存失败：${error.message}`, 'error'); }
   elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit();}
 function openRenameDirection(id) {
   const direction = findDirection(id); if (!direction) return;
@@ -2105,8 +2377,8 @@ async function renameDirection(name) {
   direction.name = value; if (direction.id === activeDirection?.id) elements.title.textContent = value;
   await persistStore(); if (currentView === 'directions') renderDirections();}
 async function deleteDirection(id) {
-  if (storeState.directions.length <= 1) { showToast('至少要保留一份简历方向。', 'error'); return; }
   const direction = findDirection(id); if (!direction) return;
+  if (!canDeleteDirection(storeState.directions, id)) { showToast('至少要保留一份简历方向。', 'error'); return; }
   if (!await confirmAction(`“${direction.name}”会被永久删除，不能恢复。`, '删除简历方向', '删除')) return;
   const wasActive = activeDirection?.id === id;
   const index = storeState.directions.findIndex((item) => item.id === id);
@@ -2178,7 +2450,7 @@ function installEvents() {
     const frame = event.target.closest('[data-open-direction]'); if (frame) await openDirection(frame.dataset.openDirection);
   });
   elements.directionGrid.addEventListener('keydown', async (event) => { const frame = event.target.closest('[data-open-direction]'); if (frame && ['Enter', ' '].includes(event.key)) { event.preventDefault(); await openDirection(frame.dataset.openDirection); } });
-  elements.directionForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'create') { event.preventDefault(); createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); } });
+  elements.directionForm.addEventListener('submit', (event) => { event.preventDefault(); if (event.submitter?.value === 'cancel') return; createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); });
   elements.renameForm.addEventListener('submit', (event) => { if (event.submitter?.value === 'rename') { event.preventDefault(); const value = elements.renameName.value; elements.renameDialog.close('renamed'); renameDirection(value).catch((error) => showToast(`改名失败：${error.message}`, 'error')); } });
   elements.confirmForm.addEventListener('submit', (event) => { if (!event.submitter) { event.preventDefault(); elements.confirmDialog.close('cancel'); } });
   // 取消按钮是 type="button"（不做表单默认按钮），否则含单文本输入框的表单
@@ -2209,7 +2481,7 @@ function installEvents() {
   window.addEventListener('keydown', async (event) => {
     const key = event.key.toLowerCase();
     if (event.metaKey && key === 's') { event.preventDefault(); return; }
-    if ((event.metaKey || event.ctrlKey) && key === 'f' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { event.preventDefault(); toggleDirections(); return; }
+    if ((event.metaKey || event.ctrlKey) && key === 'o' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { event.preventDefault(); toggleDirections(); return; }
     if (event.metaKey && key === 'z') { event.preventDefault(); if (!event.shiftKey) await undo(); return; }
     if (event.metaKey && ['i', 'u'].includes(key)) { event.preventDefault(); return; }
     if (event.key === 'Escape' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { if (currentView === 'directions') setView('editor'); }

@@ -39,16 +39,21 @@ test("fictional sample has three-column rows, stable ids, and example.com links"
 
   assert.equal(result.valid, true, result.errors.join("\n"));
   assert.deepEqual([...EDUCATION_COLUMN_RATIO], [1, 3, 1]);
-  assert.equal(sample.identity.name.html, "林舟");
+  assert.equal(sample.identity.name.html, "陈叙");
   assert.equal(sample.sections[1].entries[0].columns.length, 3);
   assert.equal(sample.sections[2].entries[0].columns.length, 3);
   assert.equal(sample.sections[3].columns.length, 3);
-  assert.deepEqual(sample.sections[3].bullets.map((bullet) => bullet.id), ["education-bullet-1"]);
+  assert.deepEqual(sample.sections[3].bullets.map((bullet) => bullet.id), ["education-bullet-1", "education-bullet-2"]);
 
   const linkHrefs = Object.values(sample.identity.links).map((link) => link.href);
   assert.ok(linkHrefs.length > 0);
   assert.ok(linkHrefs.every((href) => new URL(href).hostname === "example.com"));
-  assert.match(JSON.stringify(sample), /虚构/);
+  // 原型面向 FDE（Forward Deployed Engineer），关键词必须自然落在正文里。
+  assert.match(JSON.stringify(sample), /Forward Deployed Engineer/);
+  assert.match(JSON.stringify(sample), /RAG/);
+  // 联系方式必须是占位数据，不能混入任何真实个人信息。
+  assert.match(sample.identity.contacts.phone.html, /0000/);
+  assert.match(sample.identity.contacts.email.html, /@example\.com$/);
 
   const ids = [
     ...sample.sections[0].bullets.map((bullet) => bullet.id),

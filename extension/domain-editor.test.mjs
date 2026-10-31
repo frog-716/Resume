@@ -20,9 +20,10 @@ test('makeDirection deep-clones template content so copies evolve independently 
   const template = createSampleResumeContent();
   const direction = makeDirection('副本', template);
   // Mutating the new direction must not touch the original template.
+  const baseline = template.sections[0].bullets.length;
   direction.currentDraft.content.sections[0].bullets.push({ id: 'x', html: '注入' });
-  assert.equal(template.sections[0].bullets.length, 3);
-  assert.equal(direction.currentDraft.content.sections[0].bullets.length, 4);
+  assert.equal(template.sections[0].bullets.length, baseline);
+  assert.equal(direction.currentDraft.content.sections[0].bullets.length, baseline + 1);
 });
 
 test('makeDirection trims name and falls back to a default', () => {

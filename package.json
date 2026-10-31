@@ -6,6 +6,7 @@
   "description": "Chrome 侧边栏简历编辑器（加载 extension/ 目录使用）",
   "scripts": {
     "build:extension": "node scripts/build-extension.mjs",
+    "build:debug": "node scripts/build-debug-html.mjs",
     "test": "node --test extension/*.test.mjs"
   }
 }

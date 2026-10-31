@@ -57,15 +57,14 @@
         <input id="direction-name" name="name" class="direction-name-field" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位" aria-label="方向名称">
         <select id="direction-template" name="template" class="direction-template-field" aria-label="选择模板"></select>
       </div>
-      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="create">创建</button></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" type="submit" value="create">创建</button></div>
     </form>
   </dialog>
 
   <dialog class="modal" id="rename-dialog">
     <form method="dialog" id="rename-form">
       <h2>修改方向名称</h2>
-      <label class="modal-label" for="rename-name">方向名称</label>
-      <input id="rename-name" name="name" maxlength="80" required autocomplete="off">
+      <input id="rename-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位" aria-label="方向名称">
       <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="rename">保存</button></div>
     </form>
   </dialog>
@@ -74,7 +73,7 @@
     <form method="dialog" id="confirm-form">
       <h2 id="confirm-title">请确认</h2>
       <p id="confirm-message"></p>
-      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button danger-button" value="confirm" id="confirm-action">确认</button></div>
+      <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="quiet-button danger-button" value="confirm" id="confirm-action">确认</button></div>
     </form>
   </dialog>
 

@@ -7,6 +7,7 @@ const css = readFileSync(`${dir}/sidepanel.css`, 'utf8');
 const deps = [
   'domain-resume-content.mjs',
   'domain-auto-layout.mjs',
+  'domain-editor.mjs',
   'text-runs.mjs',
 ];
 
