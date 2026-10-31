@@ -53,10 +53,10 @@
   <dialog class="modal" id="direction-dialog">
     <form method="dialog" id="direction-form">
       <h2>新建简历方向</h2>
-      <label class="modal-label" for="direction-name">方向名称</label>
-      <input id="direction-name" name="name" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位">
-      <label class="modal-label" for="direction-template">选择模板</label>
-      <select id="direction-template" name="template"></select>
+      <div class="direction-fields">
+        <input id="direction-name" name="name" class="direction-name-field" maxlength="80" required autocomplete="off" placeholder="例如：产品设计岗位" aria-label="方向名称">
+        <select id="direction-template" name="template" class="direction-template-field" aria-label="选择模板"></select>
+      </div>
       <div class="modal-actions"><button class="quiet-button" type="button" value="cancel">取消</button><button class="primary-button" value="create">创建</button></div>
     </form>
   </dialog>

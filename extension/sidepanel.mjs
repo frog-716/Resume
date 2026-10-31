@@ -1037,19 +1037,26 @@ function confirmAction(message, title = '请确认', actionText = '确认') {
 }
 function openCreateDirection() {
   elements.directionName.value = '';
+  // “选择模板”占位项：禁选、默认选中，提示用户先选模板；值为空，
+  // 在 createDirection 里当作示例模板处理，保留“直接回车即建毛坯房”的默认行为。
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = '选择模板';
+  placeholderOption.disabled = true;
+  placeholderOption.selected = true;
   // “示例模板”就是毛坯房：预填一份虚构示例（林舟），一来就有内容可改、
   // Enter 也能续加，而不是给你一个啥都没有、加不了的空壳。
   const sampleOption = document.createElement('option');
   sampleOption.value = '__sample__';
   sampleOption.textContent = '示例模板（带示例内容 · 毛坯房）';
-  elements.directionTemplate.replaceChildren(sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
+  elements.directionTemplate.replaceChildren(placeholderOption, sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
   if (activeDirection) elements.directionTemplate.value = activeDirection.id;
   openDialog(elements.directionDialog); elements.directionName.focus();
 }
 async function createDirection() {
   const name = elements.directionName.value.trim();
   const templateValue = elements.directionTemplate.value;
-  const useSample = templateValue === '__sample__';
+  const useSample = !templateValue || templateValue === '__sample__';
   const template = useSample ? null : (findDirection(templateValue) || activeDirection);
   if (!name || (!useSample && !template)) return;
   if (!(await saveNow())) return;
