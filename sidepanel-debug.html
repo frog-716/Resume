@@ -2167,7 +2167,7 @@ function installEvents() {
     if (event.target.closest('a[data-edit]')) event.preventDefault();
   });
   elements.title.addEventListener('click', () => openRenameDirection(activeDirection?.id));
-  // 方向室入口：⌘F（SPEC P-03/S-07 冻结快捷键）与方向室内的"返回编辑"。
+  // 方向室入口：⌘O（SPEC P-03/S-07，原 ⌘F 于 2026-10-26 改为 ⌘O）与方向室内的"返回编辑"。
   // 顶栏按方向 A 设计稿只保留 PDF 一个主动作，不再放"方向室"按钮。
   byId('back-editor').addEventListener('click', () => setView('editor'));
   byId('create-direction').addEventListener('click', openCreateDirection);

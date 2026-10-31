@@ -1,14 +1,19 @@
 import { fitResumeLayout } from './domain-auto-layout.mjs';
-import { createEmptyResumeContent, createSampleResumeContent, normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
+import { normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
+import { clone, uid, nowIso, makeDirection, initialState, directionSortKey, reorderListById, canDeleteDirection, DEFAULT_LAYOUT } from './domain-editor.mjs';
 
 const PAPER_WIDTH_PX = 793.7;
 const PAPER_HEIGHT_PX = 1122.5;
 const STORE_KEY = 'resume-sidepanel-store-v1';
 const UNREADABLE_BACKUP_KEY = `${STORE_KEY}-unreadable-backup`;
-const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
 const SECTION_LABELS = { skills: '专业技能', work: '工作经历', projects: '项目经历', education: '教育背景' };
-const COLUMN_PLACEHOLDERS = ['单位 / 项目', '岗位 / 职责', '日期'];
+// 工作/项目经历的条目三栏占位：按区块区分。
+// 工作经历：单位=公司、岗位=岗位；项目经历：单位=项目、岗位=职责；第三栏都是日期。
+const COLUMN_PLACEHOLDERS = {
+  work: ['公司', '岗位', '日期'],
+  projects: ['项目', '职责', '日期'],
+};
 const REQUIRED_FONTS = [
   { family: '"PingFang SC"', sample: '简历', role: '中文字体（苹方）' },
   { family: '"Times New Roman"', sample: 'Resume', role: '英文与数字字体（Times New Roman）' },
@@ -61,12 +66,6 @@ let sortHover = null;
 let pendingRenameId = null;
 let toastTimer = null;
 
-function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function uid(prefix = 'item') {
-  const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  return `${prefix}-${id}`;
-}
-function nowIso() { return new Date().toISOString(); }
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
@@ -92,19 +91,6 @@ function fmtMinute(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
-}
-function makeDirection(name, content = createEmptyResumeContent(), currentLayout = DEFAULT_LAYOUT) {
-  const createdAt = nowIso();
-  return {
-    id: uid('direction'),
-    name: String(name || '我的简历').trim() || '我的简历',
-    createdAt,
-    currentDraft: { content: clone(content), layout: clone(currentLayout), updatedAt: createdAt },
-  };
-}
-function initialState() {
-  const direction = makeDirection('我的简历', createSampleResumeContent());
-  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
 }
 function extensionStorageGet(key) {
   if (globalThis.chrome?.storage?.local) return new Promise((resolve, reject) => chrome.storage.local.get(key, (value) => chrome.runtime?.lastError ? reject(new Error(chrome.runtime.lastError.message)) : resolve(value[key])));
@@ -346,7 +332,7 @@ function createExperience(entry, sectionType, editable) {
   const head = document.createElement('div');
   head.className = 'experience-head';
   entry.columns.forEach((column, index) => {
-    const placeholder = sectionType === 'education' ? '' : COLUMN_PLACEHOLDERS[index];
+    const placeholder = sectionType === 'education' ? '' : (COLUMN_PLACEHOLDERS[sectionType]?.[index] ?? '');
     head.append(editable
       ? makeEditable(column.html, `column|${sectionType}|${entry.id}|${index}`, `条目第${index + 1}栏`, 'entry-field', column.align, placeholder)
       : textSpan(column.html, column.align));
@@ -975,15 +961,13 @@ function finishDrag() {
   if (state.kind === 'experience') {
     const section = draft.sections.find((item) => item.type === state.section);
     if (!section?.entries) { scheduleFit(); scheduleSave(); return; }
-    const map = new Map(section.entries.map((item) => [item.id, item]));
-    section.entries = ids.map((id) => map.get(id)).filter(Boolean);
+    section.entries = reorderListById(ids, section.entries);
   } else {
     // 列表定位不到时安全退出：DOM 顺序已经变了，但草稿不乱写，
     // 重新渲染回到数据里的顺序即可（避免对 null 调用 splice 崩溃）。
     const list = findBulletList(state.section, ids[0]);
     if (!list) { scheduleFit(); scheduleSave(); return; }
-    const map = new Map(list.map((item) => [item.id, item]));
-    const sorted = ids.map((id) => map.get(id)).filter(Boolean); list.splice(0, list.length, ...sorted);
+    list.splice(0, list.length, ...reorderListById(ids, list));
   }
   // 不再 renderPaper()：拖动已通过 insertBefore 把真实 DOM 排好顺序，
   // 重建整页反而带来一次性大开销（销毁+重建全部 contenteditable）且让界面闪一下。
@@ -1005,11 +989,6 @@ function renderDirections() {
   const directions = ordered.filter((direction) => !query || direction.name.toLowerCase().includes(query));
   elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
   updateCardScales();
-}
-function directionSortKey(direction) {
-  const raw = direction?.currentDraft?.updatedAt || direction?.createdAt || 0;
-  const time = Date.parse(raw);
-  return Number.isNaN(time) ? 0 : time;
 }
 function renderDirectionCard(direction) {
   const article = document.createElement('article'); article.className = 'library-card direction-card'; article.dataset.directionId = direction.id;
@@ -1090,8 +1069,8 @@ async function renameDirection(name) {
   direction.name = value; if (direction.id === activeDirection?.id) elements.title.textContent = value;
   await persistStore(); if (currentView === 'directions') renderDirections();}
 async function deleteDirection(id) {
-  if (storeState.directions.length <= 1) { showToast('至少要保留一份简历方向。', 'error'); return; }
   const direction = findDirection(id); if (!direction) return;
+  if (!canDeleteDirection(storeState.directions, id)) { showToast('至少要保留一份简历方向。', 'error'); return; }
   if (!await confirmAction(`“${direction.name}”会被永久删除，不能恢复。`, '删除简历方向', '删除')) return;
   const wasActive = activeDirection?.id === id;
   const index = storeState.directions.findIndex((item) => item.id === id);
@@ -1152,7 +1131,7 @@ function installEvents() {
     if (event.target.closest('a[data-edit]')) event.preventDefault();
   });
   elements.title.addEventListener('click', () => openRenameDirection(activeDirection?.id));
-  // 方向室入口：⌘F（SPEC P-03/S-07 冻结快捷键）与方向室内的"返回编辑"。
+  // 方向室入口：⌘O（SPEC P-03/S-07，原 ⌘F 于 2026-10-26 改为 ⌘O）与方向室内的"返回编辑"。
   // 顶栏按方向 A 设计稿只保留 PDF 一个主动作，不再放"方向室"按钮。
   byId('back-editor').addEventListener('click', () => setView('editor'));
   byId('create-direction').addEventListener('click', openCreateDirection);
@@ -1194,7 +1173,7 @@ function installEvents() {
   window.addEventListener('keydown', async (event) => {
     const key = event.key.toLowerCase();
     if (event.metaKey && key === 's') { event.preventDefault(); return; }
-    if ((event.metaKey || event.ctrlKey) && key === 'f' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { event.preventDefault(); toggleDirections(); return; }
+    if ((event.metaKey || event.ctrlKey) && key === 'o' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { event.preventDefault(); toggleDirections(); return; }
     if (event.metaKey && key === 'z') { event.preventDefault(); if (!event.shiftKey) await undo(); return; }
     if (event.metaKey && ['i', 'u'].includes(key)) { event.preventDefault(); return; }
     if (event.key === 'Escape' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) { if (currentView === 'directions') setView('editor'); }
