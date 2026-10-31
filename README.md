@@ -81,7 +81,7 @@ extension/
 └── icons/                          # 扩展图标
 ```
 
-> `design-handoff/` 与 `prototypes/` 是设计与交互探索的留档，仅作参考，不参与扩展运行。
+> `design-handoff/` 与 `prototypes/` 是设计与交互探索的留档，仅作参考，不参与扩展运行；`prototypes/` 下的历史演示 HTML 已于 2026-11-01 清理，只保留说明与逐版日志。
 
 ## ⌨️ 常用操作
 

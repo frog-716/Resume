@@ -4,7 +4,7 @@
 
 Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。首版仅本人在当前 Mac、当前 Chrome 自用：侧边栏内快速编辑多个命名的简历方向并通过 Chrome 打印导出 PDF。每个方向只有一个自动保存的当前稿；新方向从已有方向复制后独立演进；不再提供快照、废纸篓或历史版本。以用户指定妙搭稿为初稿及版面基础，保持单张 A4，超页时缩小文字。首版不读取网页、不接 AI、不申请网站权限。Career-Next 继续作为长期优化项目；两边独立保存资料、独立发版，实际使用经验人工反馈。
 
-2026-10-22：项目收敛为**唯一前端 `extension/`**（Chrome 侧边栏，加载该目录即可用）：`extension/sidepanel.html` 是侧边栏入口，`sidepanel.mjs` 负责方向室、纸面编辑、快捷键、自动保存和 Chrome 打印，`domain-*.mjs` 是领域规则及其测试的唯一住所（测试随源码同目录，`npm test` 全绿），`print.html`/`print.mjs` 是打印预览页，`service-worker.js` 只负责打开侧边栏。旧本机 App 路径（`web/`、`server/`、`native/`、`src/`）及其构建产物（`dist/`、`out/`）已于 2026-10-22 全部移入废纸篓（`~/.Trash/resume-cleanup-20261022-161028/`，git 跟踪部分可用 `git checkout` 找回）；被文档引用的 8 个原型与 README/CHANGELOG 保留在 `prototypes/`。构建与测试：`npm run build:extension` 生成 `dist-extension/`（可再生产物），`npm test` 跑 `extension/*.test.mjs`。
+2026-10-22：项目收敛为**唯一前端 `extension/`**（Chrome 侧边栏，加载该目录即可用）：`extension/sidepanel.html` 是侧边栏入口，`sidepanel.mjs` 负责方向室、纸面编辑、快捷键、自动保存和 Chrome 打印，`domain-*.mjs` 是领域规则及其测试的唯一住所（测试随源码同目录，`npm test` 全绿），`print.html`/`print.mjs` 是打印预览页，`service-worker.js` 只负责打开侧边栏。旧本机 App 路径（`web/`、`server/`、`native/`、`src/`）及其构建产物（`dist/`、`out/`）已于 2026-10-22 全部移入废纸篓（`~/.Trash/resume-cleanup-20261022-161028/`，git 跟踪部分可用 `git checkout` 找回）；被文档引用的 8 个原型演示 HTML 已于 2026-11-01 全部清理，仅保留 `prototypes/README.md` 与 `CHANGELOG.md` 作历史记录。构建与测试：`npm run build:extension` 生成 `dist-extension/`（可再生产物），`npm test` 跑 `extension/*.test.mjs`。
 
 2026-10-23：方向室按用户反馈做视觉精修：名称点击改名、删除仅保留 `🗑️`、去掉“当前方向”和“最近编辑”前缀；JSON 导入与来源记忆按 S-08 确认取消，已有方向保留。
 
@@ -23,13 +23,7 @@ Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。�
 - [Gemini间距算法对抗审查](docs/review/gemini-spacing-adversarial-20261016.md)：Gemini独立审查七处候选间距，提出一个共用松紧旋钮方案；含本地复核与不应照抄的项目冲突，不构成已确认产品规则。
 - [八处排版数值的独立对抗审查](docs/review/spacing-eight-gaps-adversarial-20261016.md)：新子代理核对行高倒挂、八处间隙比例与自动排布次序；结果是试用建议，不是冻结规则。
 - [自动排版算法研究](docs/research/spacing-algorithm-alternatives.md)：用户提出字号和间距按固定比例联动、超出时逐档缩字号的新候选；系数和纸面效果待测试，不构成已确认产品规则。
-- [A4字号与缩页演示](prototypes/a4-typography-demo.html) / [演示说明](prototypes/README.md)：独立HTML讨论演示，资料均为虚构；README说明怎么打开和试用，CHANGELOG保留各版记录；演示操作不是正式App验收。
-- [第十四版历史交互演示](prototypes/a4-typography-demo-v14.html)：包含⌘S快照、⌘F收藏馆、废纸篓、9mm边距、A4 PDF打印、可选链接、纸面编辑、要点/经历拖动等交互探索；刷新会重置，PDF使用浏览器打印。它早期的间距滑杆和候选范围已被后续版本取代，当前冻结算法以`SPEC.md` L-19为准。[演示说明](prototypes/README.md)。
-- [第二十三版四个间隔标注](prototypes/a4-spacing-algorithm-demo-v23.html)：编辑页A4纸用彩色数字标出四个间隔，左侧同号对应；侧栏用三步和简单算式说明排版。候选范围与正式算法仍待确认。[演示说明](prototypes/README.md)。
-- [第三十四版间距对齐演示](prototypes/a4-spacing-eight-gaps-demo-v34.html)：第4处“上一分区内容到下一个大标题”与第7处使用相同的字号×0.60×(1＋0.30×松紧度)。整套算法已写入`SPEC.md`并获批准；此网页仅作视觉参考，不代表正式App实现。[演示说明](prototypes/README.md)。
-- [第三十三版空隙微调演示](prototypes/a4-spacing-eight-gaps-demo-v33.html)：以第三十二版为底，只把第4处“上一分区内容到下一个大标题”从字号×0.92调至×0.84，其他比例和功能不动；字号步长为0.01pt。仍是视觉审核原型，不代表正式规格或App实现。[演示说明](prototypes/README.md)。
-- [第三十二版 Gemini 算法试用演示](prototypes/a4-spacing-eight-gaps-demo-v32.html)：在第三十一版完整演示上，只换成 Gemini 推荐的八项比例与排字顺序；以虚构稿展示编辑后自动适配，保留9mm虚线框和整页/100%切换。算法仍待用户审批，不是正式实现；字号步长为0.01pt。[演示说明](prototypes/README.md)。
-- [第三十一版八处间隙试用演示](prototypes/a4-spacing-eight-gaps-demo-v31.html)：加入八处编号、自动联动候选比例及第8处可变间隙；保留纸面编辑、9mm虚线框和整页/100%视图，是第三十二版的前一版。[演示说明](prototypes/README.md)。
+- [原型历史记录](prototypes/README.md) / [逐版日志](prototypes/CHANGELOG.md)：A4 排版探索期的第 1～34 版单文件 HTML 演示已于 2026-11-01 按用户要求全部清理（含 v34），冻结后的规则只保留在`SPEC.md`（L-19 等条文）与本机生产实现`extension/`中；本目录只留说明与逐版日志作历史依据，不再提供可打开的演示页。
 - [Gemini UI/UX协作记录](design-handoff/editor-versions/BRIEF.md)：记录给Gemini的提示核对、等待过程、设计建议及采纳边界；Gemini不改产品规则，首版已进入实现与验收。
 - [术语](GLOSSARY.md)：明确两个产品名称，后续按已确认的业务规则补充。
 - [独立交付决定](docs/adr/0001-independent-delivery.md)：首版不依赖两项目自动同步。

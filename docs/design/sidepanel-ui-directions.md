@@ -173,7 +173,7 @@ v34 为唯一基准（SPEC L-13 已确认、冻结）。round 01 首屏联系图
 
 **实测（`verify-no-clip.cjs`，首屏与 v34 双端一致）：** 容器均 9×9px；墨迹（含描边）最长边全部 = 9px（100%）；五个图标 `PASS 未裁剪`。像素级佐证：贴边"实心像素"（描边被切平的痕迹）从 网站 368→17、电话 274→31、微信 122→4。
 
-**改动文件：** `prototypes/a4-spacing-eight-gaps-demo-v34.html`（容器 9px + `iconVB` 含描边表）、`design-handoff/ui-directions/extract-v34.cjs`（含描边归一）、`a-paper-bench.html`（重注入 + 容器 13.235px）。
+**改动文件：** `prototypes/a4-spacing-eight-gaps-demo-v34.html`（容器 9px + `iconVB` 含描边表；该演示页已于 2026-11-01 清理）、`design-handoff/ui-directions/extract-v34.cjs`（含描边归一）、`a-paper-bench.html`（重注入 + 容器 13.235px）。
 
 ## 11. 收敛：只保留方向 A（round 08）
 
@@ -184,7 +184,7 @@ v34 为唯一基准（SPEC L-13 已确认、冻结）。round 01 首屏联系图
 - `manifest.json` 收敛为仅含方向 A，`style-explorer.html` 重建为单方向对比页
 - 本文件与 `README.md`、`MAP.md` 同步收敛为单方向叙述
 
-**产物清单：** `extension/sidepanel.{html,css,mjs}`、`dist-extension/`、`design-handoff/ui-directions/`（首屏、对比页、抽取/注入/实测脚本）、`prototypes/a4-spacing-eight-gaps-demo-v34.html`（真实 PDF 基准）。
+**产物清单：** `extension/sidepanel.{html,css,mjs}`、`dist-extension/`、`design-handoff/ui-directions/`（首屏、对比页、抽取/注入/实测脚本）、`prototypes/a4-spacing-eight-gaps-demo-v34.html`（真实 PDF 基准，已于 2026-11-01 清理）。
 
 ## 12. 顶栏收敛为单个 PDF 主动作（round 09）
 
