@@ -65,7 +65,11 @@ body { overflow: hidden; }
 .top-actions .primary-button { min-width: 0; height: 34px; padding: 0 14px; font-size: 16px; font-weight: 700; white-space: nowrap; letter-spacing: .2px; }
 .top-actions .quiet-button { white-space: nowrap; }
 .paper-scroller { padding: 8px 8px 12px; }
-.view-controls { gap: 2px; }
+/* 顶栏两个控件的高度必须一致：PDF 是 34px 定高，而控件组原本是
+   「3px 上下内边距 + 30px 按钮 + 1px 边框 = 38px」，比它高 4px，并排看就是
+   右边矮一截。这里把控件组钉成 34px 并去掉上下内边距，让 30px 的按钮居中；
+   左右内边距保持原样，组的宽度与文字留白不变。 */
+.view-controls { gap: 2px; height: 34px; padding-top: 0; padding-bottom: 0; }
 .view-controls .quiet-button { min-height: 30px; }
 .view-controls .view-button { min-width: 48px; padding: 0 6px; }
 /* 控件组左右两端的光学留白对齐：左侧 "−" 是定宽按钮内居中，

@@ -298,8 +298,12 @@ function makeEditable(html, editKey, label, extraClass = '', align, placeholder)
   applyRunsToElement(span);
   return span;
 }
-function textSpan(value, align) {
+// extraClass 不能省：卡片缩略是非编辑态，条目三栏走的正是这个分支。少了
+// `entry-field` 这一层类名，卡片里第二栏不居中、第三栏（日期）不靠右，行高也
+// 不是 --entry-line——同一份内容在卡片和编辑器里就成了两套排版。
+function textSpan(value, align, extraClass = '') {
   const span = document.createElement('span');
+  if (extraClass) span.className = extraClass;
   span.innerHTML = safeFragment(value);
   if (align) span.style.textAlign = align;
   applyRunsToElement(span);
@@ -337,7 +341,7 @@ function createExperience(entry, sectionType, editable) {
     const placeholder = sectionType === 'education' ? '' : (COLUMN_PLACEHOLDERS[sectionType]?.[index] ?? '');
     head.append(editable
       ? makeEditable(column.html, `column|${sectionType}|${entry.id}|${index}`, `条目第${index + 1}栏`, 'entry-field', column.align, placeholder)
-      : textSpan(column.html, column.align));
+      : textSpan(column.html, column.align, 'entry-field'));
   });
   block.append(head);
   if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable));
@@ -363,7 +367,7 @@ function createSection(contentSection, editable, isFirst) {
     row.className = 'experience-head education-head';
     contentSection.columns.forEach((column, index) => row.append(editable
       ? makeEditable(column.html, `column|education||${index}`, `教育信息第${index + 1}栏`, 'entry-field', column.align)
-      : textSpan(column.html, column.align)));
+      : textSpan(column.html, column.align, 'entry-field')));
     body.append(row, createBulletList(contentSection.bullets, 'education', editable));
   } else {
     for (const entry of contentSection.entries || []) body.append(createExperience(entry, contentSection.type, editable));

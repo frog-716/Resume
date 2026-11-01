@@ -73,7 +73,11 @@ body { overflow: hidden; }
 .top-actions .primary-button { min-width: 0; height: 34px; padding: 0 14px; font-size: 16px; font-weight: 700; white-space: nowrap; letter-spacing: .2px; }
 .top-actions .quiet-button { white-space: nowrap; }
 .paper-scroller { padding: 8px 8px 12px; }
-.view-controls { gap: 2px; }
+/* 顶栏两个控件的高度必须一致：PDF 是 34px 定高，而控件组原本是
+   「3px 上下内边距 + 30px 按钮 + 1px 边框 = 38px」，比它高 4px，并排看就是
+   右边矮一截。这里把控件组钉成 34px 并去掉上下内边距，让 30px 的按钮居中；
+   左右内边距保持原样，组的宽度与文字留白不变。 */
+.view-controls { gap: 2px; height: 34px; padding-top: 0; padding-bottom: 0; }
 .view-controls .quiet-button { min-height: 30px; }
 .view-controls .view-button { min-width: 48px; padding: 0 6px; }
 /* 控件组左右两端的光学留白对齐：左侧 "−" 是定宽按钮内居中，
@@ -1593,8 +1597,12 @@ function makeEditable(html, editKey, label, extraClass = '', align, placeholder)
   applyRunsToElement(span);
   return span;
 }
-function textSpan(value, align) {
+// extraClass 不能省：卡片缩略是非编辑态，条目三栏走的正是这个分支。少了
+// `entry-field` 这一层类名，卡片里第二栏不居中、第三栏（日期）不靠右，行高也
+// 不是 --entry-line——同一份内容在卡片和编辑器里就成了两套排版。
+function textSpan(value, align, extraClass = '') {
   const span = document.createElement('span');
+  if (extraClass) span.className = extraClass;
   span.innerHTML = safeFragment(value);
   if (align) span.style.textAlign = align;
   applyRunsToElement(span);
@@ -1632,7 +1640,7 @@ function createExperience(entry, sectionType, editable) {
     const placeholder = sectionType === 'education' ? '' : (COLUMN_PLACEHOLDERS[sectionType]?.[index] ?? '');
     head.append(editable
       ? makeEditable(column.html, `column|${sectionType}|${entry.id}|${index}`, `条目第${index + 1}栏`, 'entry-field', column.align, placeholder)
-      : textSpan(column.html, column.align));
+      : textSpan(column.html, column.align, 'entry-field'));
   });
   block.append(head);
   if (sectionType !== 'education') block.append(createBulletList(entry.bullets, sectionType, editable));
@@ -1658,7 +1666,7 @@ function createSection(contentSection, editable, isFirst) {
     row.className = 'experience-head education-head';
     contentSection.columns.forEach((column, index) => row.append(editable
       ? makeEditable(column.html, `column|education||${index}`, `教育信息第${index + 1}栏`, 'entry-field', column.align)
-      : textSpan(column.html, column.align)));
+      : textSpan(column.html, column.align, 'entry-field')));
     body.append(row, createBulletList(contentSection.bullets, 'education', editable));
   } else {
     for (const entry of contentSection.entries || []) body.append(createExperience(entry, contentSection.type, editable));
