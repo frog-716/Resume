@@ -10,6 +10,8 @@ Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。�
 
 2026-10-31：首版已完成真机验收。`docs/handoff/rewrite-mission-brief.md`（clean-room 重写）已作废；`extension/` 单体侧边栏为既定首版路径，不再考虑分层重构。领域纯逻辑（方向生命周期、排序重排、删除守卫）已抽到 `extension/domain-editor.mjs` 并补单测。
 
+2026-11-01：方向室新增常驻「原型」（SPEC S-09）。`sidepanel.mjs` 用内存样稿渲染一张固定排在最前的原型卡片和只读预览视图（`prototype` 视图，与 `editor`/`directions` 并列），预览与缩略都读 `domain-resume-content.mjs` 导出的 `SAMPLE_LAYOUT`（9.98pt、松紧度 0，恰好一页）；原型不写入 `localStorage`/`chrome.storage`，改名与删除对它无效。新建方向时的模板下拉与复制逻辑未改，仍默认「原型」。
+
 ## 阅读入口
 
 - [产品规格](SPEC.md)：产品行为、功能约束、字号范围与快捷键的唯一维护入口；区分已确认、待确认建议和来源事实。

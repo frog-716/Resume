@@ -61,6 +61,24 @@ export function createEmptyResumeContent() {
 }
 
 /**
+ * Layout the prototype content was tuned against: 9.98pt body text at slack
+ * 0.085 fills one A4 page with only a hair of room to spare (measured
+ * ~1053px of the 1054px content box), matching what fitResumeLayout picks
+ * once the sample is opened as a real direction.
+ *
+ * Only the read-only prototype views use these numbers (direction-room card and
+ * the prototype preview). Those views render the sample statically and cannot
+ * run the DOM measurement behind fitResumeLayout, so without pinned values they
+ * would fall back to the 10.5pt default and spill onto a second page. Creating
+ * a direction from the prototype still re-fits for real in sidepanel.mjs; if
+ * this content changes, re-measure and update both fields.
+ */
+export const SAMPLE_LAYOUT = Object.freeze({
+  bodyPt: 9.98,
+  slack: 0.085,
+});
+
+/**
  * Return the "原型" template: a complete, ATS-friendly sample resume for a
  * Forward Deployed Engineer (FDE).
  *
