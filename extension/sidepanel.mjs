@@ -1,7 +1,7 @@
 import { fitResumeLayout, calculateSpacing } from './domain-auto-layout.mjs';
-import { normalizeLinkHref, repairResumeContent, createSampleResumeContent, SAMPLE_LAYOUT } from './domain-resume-content.mjs';
+import { normalizeLinkHref, repairResumeContent } from './domain-resume-content.mjs';
 import { runsHtml, applyRunsToElement, normalizeFieldRuns } from './text-runs.mjs';
-import { clone, uid, nowIso, makeDirection, initialState, directionSortKey, reorderListById, canDeleteDirection, DEFAULT_LAYOUT } from './domain-editor.mjs';
+import { clone, uid, nowIso, makeDirection, initialState, directionSortKey, reorderListById, canDeleteDirection, DEFAULT_LAYOUT, ensurePrototypeDirection, isPrototypeDirection } from './domain-editor.mjs';
 
 const PAPER_WIDTH_PX = 793.7;
 const PAPER_HEIGHT_PX = 1122.5;
@@ -18,11 +18,6 @@ const REQUIRED_FONTS = [
   { family: '"PingFang SC"', sample: '简历', role: '中文字体（苹方）' },
   { family: '"Times New Roman"', sample: 'Resume', role: '英文与数字字体（Times New Roman）' },
 ];
-// S-09：「原型」是方向室里的常驻实体，既不是某个方向，也不进本地存储。
-// 它只由内存里的样稿渲染（方向卡片缩略 + 只读预览），永远可见、不可删除、
-// 不可改名；要改动它，必须"用此原型新建"得到自己的方向。
-const PROTOTYPE_NAME = '原型';
-const PROTOTYPE_TEMPLATE_VALUE = '__sample__';
 
 const byId = (id) => document.getElementById(id);
 const elements = {
@@ -34,8 +29,6 @@ const elements = {
   renameForm: byId('rename-form'), renameName: byId('rename-name'), confirmDialog: byId('confirm-dialog'),
   confirmForm: byId('confirm-form'), confirmTitle: byId('confirm-title'), confirmMessage: byId('confirm-message'),
   confirmAction: byId('confirm-action'), toast: byId('toast'), export: byId('export-pdf'), sortHandle: byId('sort-handle'),
-  prototypeView: byId('prototype-view'), prototypeStage: byId('prototype-stage'), prototypeSpace: byId('prototype-space'),
-  prototypePaper: byId('prototype-paper'), prototypeContent: byId('prototype-content'), viewControls: document.querySelector('.view-controls'),
 };
 
 const ICONS = {
@@ -72,8 +65,6 @@ let dragState = null;
 let sortHover = null;
 let pendingRenameId = null;
 let toastTimer = null;
-// 原型样稿只在内存里生成一次：卡片缩略与预览共用同一份只读内容。
-let prototypeSampleContent = null;
 
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
@@ -162,14 +153,16 @@ async function loadStore() {
       },
     });
   }
-  storeState = directions.length
-    ? { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions }
-    : initialState();
+  // 老存档里没有原型（它是后来才加进来的内置简历）：补一份，不动已有方向。
+  const ensured = ensurePrototypeDirection(directions);
+  storeState = { schemaVersion: 1, lastOpenedDirectionId: saved.lastOpenedDirectionId, directions: ensured.directions };
   if (!storeState.directions.some((item) => item.id === storeState.lastOpenedDirectionId)) storeState.lastOpenedDirectionId = storeState.directions[0].id;
   if (issues.length) showToast(`${issues.length} 个方向的内容已自动修复：${issues.slice(0, 2).join('；')}`, 'error');
-  // 修复后的内容要落盘，否则磁盘上仍是坏数据，下次启动会再修一次、
-  // 再弹一次提示，用户会以为"每次打开都在损坏我的简历"。
-  if (issues.length) await persistStore();
+  // 修复后的内容、以及补进来的原型都要落盘，否则磁盘上仍是旧数据，下次启动
+  // 会再修一次、再弹一次提示，用户会以为"每次打开都在损坏我的简历"。
+  // 但写盘失败不能阻断启动：数据都在内存里，用户还能继续用、下次保存会重试；
+  // 抛出会让 boot 走到"简历没有打开，已新建一份空白简历"，把好好的存档说成没了。
+  if (issues.length || ensured.added) await persistStore().catch(() => {});
 }
 async function persistStore(snapshot = storeState) {
   await extensionStorageSet(STORE_KEY, clone(snapshot));
@@ -486,6 +479,9 @@ function updateContentFromElement(element) {
   else if (Object.hasOwn(value, 'html')) value.html = serializeEditable(element);
   if (element.style.textAlign && Object.hasOwn(value, 'align')) value.align = element.style.textAlign;
 }
+// 同一套间距公式同时决定编辑页纸面和方向卡片缩略的垂直韵律：缩略必须调用
+// 它，否则卡片只剩字号是对的，行高与六处间距仍停在 10.5pt 的默认值上，
+// 同一份内容在卡片里和编辑器里的疏密就不一样了。
 function applySpacing(bodyPt, slack, spacing, target = elements.paper) {
   const style = target.style;
   style.setProperty('--body-size', `${bodyPt.toFixed(2)}pt`);
@@ -497,8 +493,8 @@ function applySpacing(bodyPt, slack, spacing, target = elements.paper) {
   style.setProperty('--title-entry-gap', `${spacing.largeTitleToFirstThreeColumnGapPt.toFixed(4)}pt`);
   style.setProperty('--exp-gap', `${spacing.previousExperienceBulletToNextThreeColumnGapPt.toFixed(4)}pt`);
   style.setProperty('--entry-bullet-gap', `${spacing.threeColumnToFirstBulletGapPt.toFixed(4)}pt`);
-  // 只有编辑页的纸面才把结果写回当前稿的布局；原型预览是只读样稿，
-  // 不能把自己的定版排版写进用户正在编辑的方向。
+  // 只有编辑页的纸面才把结果写回当前稿的布局：方向卡片缩略只是用这份
+  // 排版画一张图，不能反过来改写当前正在编辑的方向。
   if (target === elements.paper) layout = { ...(layout || DEFAULT_LAYOUT), bodyPt, slack, marginsMm: { ...DEFAULT_LAYOUT.marginsMm } };
 }
 function applyAutoFit() {
@@ -1047,115 +1043,76 @@ function setView(view) {
   currentView = view;
   elements.editor.classList.toggle('hidden', view !== 'editor');
   elements.directionView.classList.toggle('hidden', view !== 'directions');
-  elements.prototypeView.classList.toggle('hidden', view !== 'prototype');
-  // 顶栏的缩放/虚线框只作用于编辑页纸面：在只读原型预览里它们没有作用对象，
-  // 留着会显示一个和眼前纸面无关的比例读数。
-  elements.viewControls.classList.toggle('hidden', view === 'prototype');
   if (view !== 'editor') elements.sortHandle.hidden = true;
   if (view === 'directions') { renderDirections(); setTimeout(() => elements.directionSearch.focus(), 40); }
-  else if (view === 'prototype') {
-    renderPrototypePreview();
-    // 进来的卡片已被 display:none 隐藏，焦点会掉回 body：把它交给返回按钮，
-    // 键盘用户不必从页面顶部重新 Tab。
-    elements.prototypeView.querySelector('.back-button')?.focus();
-  }
   else { updateSortHandle(); scheduleFit(); }
-}
-// 原型内容只在内存里生成一次，卡片缩略与预览共用同一份只读样稿。
-function prototypeSample() {
-  if (!prototypeSampleContent) prototypeSampleContent = createSampleResumeContent();
-  return prototypeSampleContent;
-}
-// S-09：原型以独立卡片常驻方向室，位置固定在所有方向之前，不进本地存储、
-// 不改名、不可删除；它是"新建方向"的模板来源之一，本身不是可编辑方向。
-function renderPrototypeCard() {
-  const article = document.createElement('article');
-  article.className = 'library-card direction-card prototype-card';
-  const meta = document.createElement('div');
-  meta.className = 'card-meta';
-  const info = document.createElement('div');
-  info.className = 'card-info';
-  const name = document.createElement('span');
-  name.className = 'card-name is-static';
-  name.textContent = PROTOTYPE_NAME;
-  const note = document.createElement('span');
-  note.className = 'card-time';
-  note.textContent = '内置模板 · 只读预览';
-  info.append(name, note);
-  meta.append(info);
-  const actions = document.createElement('div');
-  actions.className = 'card-actions';
-  const useButton = document.createElement('button');
-  useButton.type = 'button';
-  useButton.dataset.usePrototype = 'true';
-  useButton.setAttribute('aria-label', '用原型新建方向');
-  useButton.title = '用原型新建方向';
-  useButton.textContent = '＋';
-  actions.append(useButton);
-  meta.append(actions);
-  article.append(meta);
-  const frame = document.createElement('div');
-  frame.className = 'card-paper-frame';
-  frame.dataset.openPrototype = 'true';
-  frame.setAttribute('role', 'button');
-  frame.setAttribute('tabindex', '0');
-  frame.setAttribute('aria-label', `预览${PROTOTYPE_NAME}`);
-  const mini = document.createElement('div');
-  mini.className = 'card-paper';
-  // 缩略图用样稿的定版排版：不这么做，行高与六处间距会沿用 CSS 的默认值，
-  // 同一份内容在缩略图里会被撑成两页，和预览页对不上。
-  applySpacing(SAMPLE_LAYOUT.bodyPt, SAMPLE_LAYOUT.slack, calculateSpacing(SAMPLE_LAYOUT.bodyPt, SAMPLE_LAYOUT.slack), mini);
-  const inner = document.createElement('div');
-  inner.className = 'paper-content';
-  buildPaperContent(inner, prototypeSample(), false);
-  mini.append(inner);
-  frame.append(mini);
-  article.append(frame);
-  return article;
-}
-function renderPrototypePreview() {
-  buildPaperContent(elements.prototypeContent, prototypeSample(), false);
-  applySpacing(SAMPLE_LAYOUT.bodyPt, SAMPLE_LAYOUT.slack, calculateSpacing(SAMPLE_LAYOUT.bodyPt, SAMPLE_LAYOUT.slack), elements.prototypePaper);
-  elements.prototypePaper.classList.remove('guide-on', 'is-overflow');
-  elements.prototypeStage.scrollTop = 0;
-  updatePrototypeScale();
-}
-// 预览按可用宽度整页显示（不放大到超过 100%），沿用编辑页的 .paper 尺寸，
-// 因此不需要为预览再复制一套纸面样式。
-function updatePrototypeScale() {
-  if (currentView !== 'prototype') return;
-  const stage = elements.prototypeStage;
-  const style = getComputedStyle(stage);
-  const available = Math.max(220, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2);
-  const scale = Math.max(0.25, Math.min(1, available / PAPER_WIDTH_PX));
-  const space = elements.prototypeSpace;
-  space.style.setProperty('--paper-scale', String(scale));
-  space.style.width = `${PAPER_WIDTH_PX * scale}px`;
-  space.style.height = `${PAPER_HEIGHT_PX * scale}px`;
 }
 function renderDirections() {
   const query = elements.directionSearch.value.trim().toLowerCase();
   // S-07：方向室按最近编辑时间倒序。搜索只过滤、不改变相对顺序。
-  const ordered = [...storeState.directions].sort((a, b) => directionSortKey(b) - directionSortKey(a));
+  const ordered = orderedDirections();
   const directions = ordered.filter((direction) => !query || direction.name.toLowerCase().includes(query));
-  const cards = directions.map(renderDirectionCard);
-  // S-09：原型固定在方向卡片之前，搜索时按名称（含"内置模板"）一起过滤。
-  if (!query || `${PROTOTYPE_NAME}内置模板`.toLowerCase().includes(query)) cards.unshift(renderPrototypeCard());
-  elements.directionGrid.replaceChildren(...cards);
+  elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
   updateCardScales();
 }
+// S-07 的排序，加一条 S-09 的位置规则：原型固定排在第一位。位置之外它与
+// 其它方向没有差别（同样是可编辑、可导出的一份简历）。
+function orderedDirections() {
+  const sorted = [...storeState.directions].sort((a, b) => directionSortKey(b) - directionSortKey(a));
+  const index = sorted.findIndex(isPrototypeDirection);
+  if (index <= 0) return sorted;
+  return [sorted[index], ...sorted.slice(0, index), ...sorted.slice(index + 1)];
+}
+// 卡片缩略必须整份套用该方向自己的排版参数（字号 + 松紧度）：只写
+// --body-size 会让行高与六处间距继续沿用 10.5pt 的默认值，同一份内容在
+// 卡片里和编辑器里的疏密就对不上（S-07 要求缩略与编辑页一致）。
+function cardLayoutOf(direction) {
+  const stored = direction.currentDraft?.layout || DEFAULT_LAYOUT;
+  const bodyPt = Number(stored.bodyPt);
+  const slack = Number(stored.slack);
+  return {
+    bodyPt: Number.isFinite(bodyPt) && bodyPt > 0 ? bodyPt : 10.5,
+    slack: Number.isFinite(slack) ? Math.min(1, Math.max(0, slack)) : 0,
+  };
+}
 function renderDirectionCard(direction) {
-  const article = document.createElement('article'); article.className = 'library-card direction-card'; article.dataset.directionId = direction.id;
+  const article = document.createElement('article');
+  article.className = 'library-card direction-card';
+  article.dataset.directionId = direction.id;
   article.dataset.current = String(direction.id === activeDirection?.id);
   const meta = document.createElement('div'); meta.className = 'card-meta';
   const info = document.createElement('div'); info.className = 'card-info';
-  const title = document.createElement('button'); title.type = 'button'; title.className = 'card-name'; title.textContent = direction.name; title.dataset.renameDirection = direction.id; title.title = '点击修改方向名称'; title.setAttribute('aria-label', `点击修改方向名称：${direction.name}`); info.append(title);
-  const time = document.createElement('time'); time.className = 'card-time'; time.dateTime = direction.currentDraft.updatedAt || ''; time.textContent = fmtMinute(direction.currentDraft.updatedAt); info.append(time);
+  const title = document.createElement('button');
+  title.type = 'button'; title.className = 'card-name'; title.textContent = direction.name;
+  title.dataset.renameDirection = direction.id; title.title = '点击修改方向名称';
+  title.setAttribute('aria-label', `点击修改方向名称：${direction.name}`);
+  info.append(title);
+  const time = document.createElement('time');
+  time.className = 'card-time'; time.dateTime = direction.currentDraft.updatedAt || '';
+  time.textContent = fmtMinute(direction.currentDraft.updatedAt);
+  info.append(time);
   meta.append(info);
-  const actions = document.createElement('div'); actions.className = 'card-actions';
-  const deleteButton = document.createElement('button'); deleteButton.type = 'button'; deleteButton.dataset.deleteDirection = direction.id; deleteButton.setAttribute('aria-label', '删除方向'); deleteButton.title = '删除方向'; deleteButton.textContent = '🗑️'; actions.append(deleteButton); meta.append(actions); article.append(meta);
-  const frame = document.createElement('div'); frame.className = 'card-paper-frame'; frame.dataset.openDirection = direction.id; frame.setAttribute('role', 'button'); frame.setAttribute('tabindex', '0'); frame.setAttribute('aria-label', `打开${direction.name}`);
-  const mini = document.createElement('div'); mini.className = 'card-paper'; mini.style.setProperty('--body-size', `${Number(direction.currentDraft.layout?.bodyPt || 10.5).toFixed(2)}pt`); const inner = document.createElement('div'); inner.className = 'paper-content'; buildPaperContent(inner, direction.currentDraft.content, false); mini.append(inner); frame.append(mini); article.append(frame); return article;
+  // S-09：原型与其它方向的唯一差别就是不能删除，所以它没有删除按钮。
+  if (!isPrototypeDirection(direction)) {
+    const actions = document.createElement('div'); actions.className = 'card-actions';
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button'; deleteButton.dataset.deleteDirection = direction.id;
+    deleteButton.setAttribute('aria-label', '删除方向'); deleteButton.title = '删除方向';
+    deleteButton.textContent = '🗑️';
+    actions.append(deleteButton); meta.append(actions);
+  }
+  article.append(meta);
+  const frame = document.createElement('div');
+  frame.className = 'card-paper-frame'; frame.dataset.openDirection = direction.id;
+  frame.setAttribute('role', 'button'); frame.setAttribute('tabindex', '0');
+  frame.setAttribute('aria-label', `打开${direction.name}`);
+  const mini = document.createElement('div'); mini.className = 'card-paper';
+  const { bodyPt, slack } = cardLayoutOf(direction);
+  applySpacing(bodyPt, slack, calculateSpacing(bodyPt, slack), mini);
+  const inner = document.createElement('div'); inner.className = 'paper-content';
+  buildPaperContent(inner, direction.currentDraft.content, false);
+  mini.append(inner); frame.append(mini); article.append(frame);
+  return article;
 }
 function updateCardScales() {
   if (currentView !== 'directions') return;
@@ -1191,29 +1148,29 @@ function confirmAction(message, title = '请确认', actionText = '确认') {
 }
 function openCreateDirection() {
   elements.directionName.value = '';
-  // “原型”是默认模板，直接作为首项并选中：用户点开就能用，不必先展开
-  // 下拉再挑。这里刻意不放 disabled 的占位项——给 disabled option 设
-  // selected 会让部分环境下 select 卡在空值，切换后仍取不到模板。
-  const sampleOption = document.createElement('option');
-  sampleOption.value = PROTOTYPE_TEMPLATE_VALUE;
-  sampleOption.textContent = PROTOTYPE_NAME;
-  elements.directionTemplate.replaceChildren(sampleOption, ...storeState.directions.map((direction) => { const option = document.createElement('option'); option.value = direction.id; option.textContent = direction.name; return option; }));
-  elements.directionTemplate.value = PROTOTYPE_TEMPLATE_VALUE;
+  // 模板下拉就是"现有方向"本身——原型也是一份普通方向，不必再单开一个
+  // 特殊条目。默认选中「原型」（它在清单首位），点开就能用，不必先展开下拉。
+  const options = orderedDirections();
+  elements.directionTemplate.replaceChildren(...options.map((direction) => {
+    const option = document.createElement('option');
+    option.value = direction.id; option.textContent = direction.name;
+    return option;
+  }));
+  elements.directionTemplate.value = options[0]?.id || '';
   openDialog(elements.directionDialog); elements.directionName.focus();
 }
 async function createDirection() {
   const name = elements.directionName.value.trim();
   if (!name) return;
   const templateValue = elements.directionTemplate.value;
-  const useSample = !templateValue || templateValue === PROTOTYPE_TEMPLATE_VALUE;
-  const source = useSample ? null : findDirection(templateValue);
-  if (!useSample && !source) return;
+  // 下拉里每一个选项都是一份真实方向；找不到时退回原型，避免"没选中"就
+  // 建出一份空白简历。
+  const source = findDirection(templateValue) || storeState.directions.find(isPrototypeDirection);
+  if (!source) return;
   // 旧草稿保存失败不该阻塞新建：内容还在内存里，下一次编辑会重试落盘。
   // 之前这里 return 会让“创建”按钮看起来毫无反应。
   await saveNow().catch(() => false);
-  const content = useSample ? createSampleResumeContent() : source.currentDraft.content;
-  const layout = useSample ? DEFAULT_LAYOUT : source.currentDraft.layout;
-  const direction = makeDirection(name, content, layout);
+  const direction = makeDirection(name, source.currentDraft.content, source.currentDraft.layout);
   storeState.directions.push(direction); resetEditorState(direction);
   try { await persistStore(); } catch (error) { showToast(`已创建，但保存失败：${error.message}`, 'error'); }
   elements.directionDialog.close('created'); renderPaper(); setView('editor'); scheduleFit();}
@@ -1229,6 +1186,7 @@ async function renameDirection(name) {
   await persistStore(); if (currentView === 'directions') renderDirections();}
 async function deleteDirection(id) {
   const direction = findDirection(id); if (!direction) return;
+  if (isPrototypeDirection(direction)) { showToast('「原型」是内置简历，不能删除。', 'error'); return; }
   if (!canDeleteDirection(storeState.directions, id)) { showToast('至少要保留一份简历方向。', 'error'); return; }
   if (!await confirmAction(`“${direction.name}”会被永久删除，不能恢复。`, '删除简历方向', '删除')) return;
   const wasActive = activeDirection?.id === id;
@@ -1293,21 +1251,15 @@ function installEvents() {
   // 方向室入口：⌘O（SPEC P-03/S-07，原 ⌘F 于 2026-10-26 改为 ⌘O）与方向室内的"返回编辑"。
   // 顶栏按方向 A 设计稿只保留 PDF 一个主动作，不再放"方向室"按钮。
   byId('back-editor').addEventListener('click', () => setView('editor'));
-  byId('back-from-prototype').addEventListener('click', () => setView('directions'));
   byId('create-direction').addEventListener('click', openCreateDirection);
-  byId('use-prototype').addEventListener('click', openCreateDirection);
   elements.directionSearch.addEventListener('input', renderDirections);
   elements.directionGrid.addEventListener('click', async (event) => {
-    // 原型卡片只有两个动作：预览（点纸面）与用原型新建（右上角 ＋）。
-    if (event.target.closest('[data-use-prototype]')) { event.preventDefault(); openCreateDirection(); return; }
-    if (event.target.closest('[data-open-prototype]')) { setView('prototype'); return; }
     const rename = event.target.closest('[data-rename-direction]'); if (rename) { event.stopPropagation(); openRenameDirection(rename.dataset.renameDirection); return; }
     const remove = event.target.closest('[data-delete-direction]'); if (remove) { event.stopPropagation(); await deleteDirection(remove.dataset.deleteDirection); return; }
     const frame = event.target.closest('[data-open-direction]'); if (frame) await openDirection(frame.dataset.openDirection);
   });
   elements.directionGrid.addEventListener('keydown', async (event) => {
     if (!['Enter', ' '].includes(event.key)) return;
-    if (event.target.closest('[data-open-prototype]')) { event.preventDefault(); setView('prototype'); return; }
     const frame = event.target.closest('[data-open-direction]'); if (frame) { event.preventDefault(); await openDirection(frame.dataset.openDirection); }
   });
   elements.directionForm.addEventListener('submit', (event) => { event.preventDefault(); if (event.submitter?.value === 'cancel') return; createDirection().catch((error) => showToast(`新建失败：${error.message}`, 'error')); });
@@ -1345,16 +1297,13 @@ function installEvents() {
     if (event.metaKey && key === 'z') { event.preventDefault(); if (!event.shiftKey) await undo(); return; }
     if (event.metaKey && ['i', 'u'].includes(key)) { event.preventDefault(); return; }
     if (event.key === 'Escape' && !elements.directionDialog.open && !elements.renameDialog.open && !elements.confirmDialog.open) {
-      // 原型预览是方向室的下级页面：Esc 先退回方向室，再退回编辑页。
-      if (currentView === 'prototype') setView('directions');
-      else if (currentView === 'directions') setView('editor');
+      if (currentView === 'directions') setView('editor');
     }
   }, true);
 }
 function installDragObservers() {
   new ResizeObserver(updateViewScale).observe(elements.paperScroller);
   new ResizeObserver(updateCardScales).observe(elements.directionGrid);
-  new ResizeObserver(updatePrototypeScale).observe(elements.prototypeStage);
   installDrag();
 }
 async function boot() {

@@ -44,6 +44,14 @@ test("fictional sample has three-column rows, stable ids, and example.com links"
   assert.equal(sample.sections[2].entries[0].columns.length, 3);
   assert.equal(sample.sections[3].columns.length, 3);
   assert.deepEqual(sample.sections[3].bullets.map((bullet) => bullet.id), ["education-bullet-1", "education-bullet-2"]);
+  // 日期口径与用户自己的 AI 产品经理简历一致：YYYY.MM - YYYY.MM（或 - 至今）。
+  const datePattern = /^\d{4}\.\d{2} - (\d{4}\.\d{2}|至今)$/;
+  const workDates = sample.sections[1].entries.map((entry) => entry.columns[2].html);
+  const projectDates = sample.sections[2].entries.map((entry) => entry.columns[2].html);
+  assert.deepEqual(workDates, ["2022.07 - 至今", "2020.03 - 2022.06", "2018.07 - 2020.02"]);
+  assert.deepEqual(projectDates, ["2025.03 - 至今", "2024.07 - 2025.01", "2023.09 - 2024.05"]);
+  assert.ok([...workDates, ...projectDates, sample.sections[3].columns[2].html].every((date) => datePattern.test(date)));
+  assert.equal(sample.sections[3].columns[2].html, "2014.09 - 2018.06");
 
   const linkHrefs = Object.values(sample.identity.links).map((link) => link.href);
   assert.ok(linkHrefs.length > 0);

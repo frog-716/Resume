@@ -252,93 +252,14 @@ body { overflow: hidden; }
 @media (min-width: 620px) {
   .library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-/* S-09：方向室里的「原型」常驻卡片。缩略纸面与方向卡片完全同款（同一套
-   .card-paper 渲染），只用一道墨蓝描边和一行副标题说明它是内置模板、
-   不是某个方向；它没有改名和删除，右上角是"用原型新建"。 */
-.library-card.prototype-card { border-color: #c6d1de; }
-.library-card.prototype-card:hover { border-color: #b3c3d6; }
-.card-name.is-static { cursor: default; }
-.card-name.is-static:hover {
-  color: #23222A;
-  background: transparent;
-  text-decoration: none;
-}
-.card-actions button[data-use-prototype] {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid #e5e3df;
-  border-radius: 9px;
-  background: #fff;
-  color: var(--accent);
-  font-size: 18px;
-  line-height: 1;
-  box-shadow: 0 1px 2px rgba(35, 34, 42, .04);
-  transition: transform .12s ease, border-color .12s ease, background .12s ease;
-}
-.card-actions button[data-use-prototype]:hover {
-  transform: translateY(-1px);
-  border-color: #b9c7d6;
-  background: #f4f6f9;
-}
-/* 原型预览：只读整页查看。纸面沿用编辑页的 .paper（同一毫米尺寸与缩放
-   变量），比例按预览区可用宽度算，不再触发自动排版。 */
-.library-view.prototype-view {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.prototype-header { align-items: center; }
-.prototype-heading { min-width: 0; flex: 1; }
-.prototype-name {
-  margin: 0;
-  color: #23222A;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-.prototype-note {
-  margin: 2px 0 0;
-  overflow: hidden;
-  color: #777580;
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.prototype-cta {
-  flex: none;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.prototype-stage {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 2px 0 18px;
-}
-.prototype-space { position: relative; flex: none; margin: 0 auto; }
-.prototype-paper { box-shadow: 0 4px 20px rgba(35, 34, 42, .14); }
 @media (prefers-reduced-motion: reduce) {
   .library-card.direction-card,
   .small-primary,
   .card-name,
-  .card-actions button[data-delete-direction],
-  .card-actions button[data-use-prototype] { transition: none; }
+  .card-actions button[data-delete-direction] { transition: none; }
   .danger-button { transition: none; }
   .library-card.direction-card:hover,
   .small-primary:hover,
-  .card-actions button[data-delete-direction]:hover,
-  .card-actions button[data-use-prototype]:hover { transform: none; }
+  .card-actions button[data-delete-direction]:hover { transform: none; }
 }
 

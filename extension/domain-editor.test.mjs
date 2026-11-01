@@ -8,6 +8,11 @@ import {
   directionSortKey,
   reorderListById,
   canDeleteDirection,
+  ensurePrototypeDirection,
+  isPrototypeDirection,
+  makePrototypeDirection,
+  PROTOTYPE_ID,
+  PROTOTYPE_NAME,
 } from './domain-editor.mjs';
 import { createSampleResumeContent, createEmptyResumeContent } from './domain-resume-content.mjs';
 
@@ -45,6 +50,50 @@ test('initialState seeds exactly one direction with sample content', () => {
   assert.equal(state.directions.length, 1);
   assert.equal(state.lastOpenedDirectionId, state.directions[0].id);
   assert.equal(state.directions[0].currentDraft.content.sections.length, 4);
+});
+
+test('initialState seeds the prototype as an ordinary direction (S-09)', () => {
+  const state = initialState();
+  const [prototype] = state.directions;
+  assert.equal(prototype.id, PROTOTYPE_ID);
+  assert.equal(prototype.name, PROTOTYPE_NAME);
+  assert.equal(state.lastOpenedDirectionId, PROTOTYPE_ID);
+  // 与普通方向同构：同样的 currentDraft 形状、同样的布局字段，可被编辑与打印。
+  assert.deepEqual(Object.keys(prototype.currentDraft).sort(), ['content', 'layout', 'updatedAt']);
+  assert.equal(prototype.currentDraft.layout.bodyPt > 0, true);
+  assert.equal(prototype.currentDraft.content.sections.length, 4);
+});
+
+test('ensurePrototypeDirection appends the prototype to an older store without touching it', () => {
+  const existing = makeDirection('AI产品经理');
+  const { directions, added } = ensurePrototypeDirection([existing]);
+  assert.equal(added, true);
+  assert.equal(directions.length, 2);
+  assert.equal(directions[0].id, PROTOTYPE_ID);
+  assert.equal(directions[1], existing);
+
+  const again = ensurePrototypeDirection(directions);
+  assert.equal(again.added, false);
+  assert.equal(again.directions.length, 2);
+});
+
+test('isPrototypeDirection recognises the built-in direction by id or marker (S-09)', () => {
+  assert.equal(isPrototypeDirection(makePrototypeDirection()), true);
+  assert.equal(isPrototypeDirection({ id: PROTOTYPE_ID }), true);
+  assert.equal(isPrototypeDirection({ id: 'direction-x', builtin: true }), true);
+  assert.equal(isPrototypeDirection({ id: 'direction-x', builtin: false }), false);
+  assert.equal(isPrototypeDirection(makeDirection('我的简历')), false);
+  assert.equal(isPrototypeDirection(null), false);
+});
+
+test('canDeleteDirection refuses to delete the prototype (S-09)', () => {
+  const prototype = makePrototypeDirection();
+  const other = makeDirection('我的简历');
+  assert.equal(canDeleteDirection([prototype, other], PROTOTYPE_ID), false);
+  assert.equal(canDeleteDirection([prototype, other], other.id), true);
+  // 改名只是改 name：同一份内置简历仍然删不掉。
+  const renamed = { ...prototype, name: '原型 · FDE' };
+  assert.equal(canDeleteDirection([renamed, other], renamed.id), false);
 });
 
 test('directionSortKey reads updatedAt then createdAt and tolerates bad dates (S-07)', () => {

@@ -5,9 +5,15 @@
 // acceptance-critical behaviour (direction lifecycle, ordering, delete guard)
 // has real coverage instead of relying on manual Chrome verification alone.
 
-import { createEmptyResumeContent, createSampleResumeContent } from './domain-resume-content.mjs';
+import { createEmptyResumeContent, createSampleResumeContent, SAMPLE_LAYOUT } from './domain-resume-content.mjs';
 
 export const DEFAULT_LAYOUT = Object.freeze({ marginsMm: { top: 9, right: 9, bottom: 9, left: 9 } });
+
+// S-09：「原型」是一份真正的简历方向——同样的卡片、同样的编辑器、同样的
+// 排版与打印，唯一不同是不允许删除。它的初始名字是「原型」，可以像其它方向
+// 一样改名；因此用固定 id 认它，而不是认名字。
+export const PROTOTYPE_ID = 'direction-prototype';
+export const PROTOTYPE_NAME = '原型';
 
 export function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
@@ -31,10 +37,35 @@ export function makeDirection(name, content = createEmptyResumeContent(), curren
   };
 }
 
-// First run: exactly one direction seeded with fictional sample content.
+// The prototype document: same shape as any direction, seeded with the FDE
+// sample. `builtin` only marks where it came from (so a future run can find it
+// even if the id were ever repaired); it grants no other behaviour.
+export function makePrototypeDirection() {
+  const createdAt = nowIso();
+  return {
+    id: PROTOTYPE_ID,
+    name: PROTOTYPE_NAME,
+    builtin: true,
+    createdAt,
+    currentDraft: { content: clone(createSampleResumeContent()), layout: clone(SAMPLE_LAYOUT), updatedAt: createdAt },
+  };
+}
+
+export function isPrototypeDirection(direction) {
+  return Boolean(direction) && (direction.id === PROTOTYPE_ID || direction.builtin === true);
+}
+
+// Older stores (and any store the user already has) predate the prototype. Add
+// it once, at the front, without touching a single existing direction.
+export function ensurePrototypeDirection(directions) {
+  if (directions.some(isPrototypeDirection)) return { directions, added: false };
+  return { directions: [makePrototypeDirection(), ...directions], added: true };
+}
+
+// First run: exactly one direction — the prototype — with fictional sample content.
 export function initialState() {
-  const direction = makeDirection('我的简历', createSampleResumeContent());
-  return { schemaVersion: 1, lastOpenedDirectionId: direction.id, directions: [direction] };
+  const prototype = makePrototypeDirection();
+  return { schemaVersion: 1, lastOpenedDirectionId: prototype.id, directions: [prototype] };
 }
 
 // S-07: direction room orders by most-recent-edit time, newest first.
@@ -55,7 +86,10 @@ export function reorderListById(orderedIds, items) {
 }
 
 // S-06: at least one direction must remain; the last one cannot be deleted.
+// S-09: the built-in prototype can never be deleted, no matter how many
+// directions exist.
 export function canDeleteDirection(directions, id) {
+  if (isPrototypeDirection({ id })) return false;
   if (directions.length <= 1) return false;
   return directions.some((direction) => direction.id === id);
 }

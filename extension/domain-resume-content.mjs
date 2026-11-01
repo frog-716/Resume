@@ -61,17 +61,14 @@ export function createEmptyResumeContent() {
 }
 
 /**
- * Layout the prototype content was tuned against: 9.98pt body text at slack
- * 0.085 fills one A4 page with only a hair of room to spare (measured
- * ~1053px of the 1054px content box), matching what fitResumeLayout picks
- * once the sample is opened as a real direction.
+ * Starting layout for the prototype document (9.98pt body text, slack 0.085,
+ * one A4 page with only a hair of room to spare).
  *
- * Only the read-only prototype views use these numbers (direction-room card and
- * the prototype preview). Those views render the sample statically and cannot
- * run the DOM measurement behind fitResumeLayout, so without pinned values they
- * would fall back to the 10.5pt default and spill onto a second page. Creating
- * a direction from the prototype still re-fits for real in sidepanel.mjs; if
- * this content changes, re-measure and update both fields.
+ * The prototype is an ordinary direction: opening it runs fitResumeLayout and
+ * overwrites this with the real measurement. The pinned numbers only exist so
+ * the very first paint — the direction-room thumbnail of a store that has just
+ * been seeded — matches the editor instead of spilling at the 10.5pt default.
+ * If the sample content changes, re-measure and update both fields.
  */
 export const SAMPLE_LAYOUT = Object.freeze({
   bodyPt: 9.98,
@@ -126,7 +123,7 @@ export function createSampleResumeContent() {
       columns: [
         text("字节跳动 · 火山引擎"),
         text("高级前向部署工程师（Senior FDE）"),
-        text("2022.07—至今"),
+        text("2022.07 - 至今"),
       ],
       bullets: [
         { id: "work-bullet-1", html: "主导 12 家头部客户（金融、汽车、零售）的大模型应用落地，交付周期由 14 周压缩至 7 周，客户续约率 <b>94%</b>。" },
@@ -144,7 +141,7 @@ export function createSampleResumeContent() {
       columns: [
         text("智谱 AI"),
         text("解决方案架构师（FDE）"),
-        text("2020.03—2022.06"),
+        text("2020.03 - 2022.06"),
       ],
       bullets: [
         { id: "work-bullet-5", html: "作为 Forward Deployed Engineer 负责 API 售前验证与现场交付，支撑 45+ 客户 POC，转化率 <b>71%</b>，回款 6800 万元。" },
@@ -159,7 +156,7 @@ export function createSampleResumeContent() {
       columns: [
         text("商汤科技"),
         text("后端工程师"),
-        text("2018.07—2020.02"),
+        text("2018.07 - 2020.02"),
       ],
       bullets: [
         { id: "work-bullet-9", html: "负责城市视觉中枢的数据接入与任务调度，日均处理 2.4 亿事件流、跨 7 地机房，服务可用性 <b>99.97%</b>，零重大事故。" },
@@ -175,7 +172,7 @@ export function createSampleResumeContent() {
       columns: [
         text("开源：fde-starter-kit"),
         text("作者"),
-        text("2025.03—至今"),
+        text("2025.03 - 至今"),
       ],
       bullets: [
         { id: "project-bullet-1", html: "开源 FDE 交付脚手架（鉴权、日志、评测、部署），GitHub <b>3.2k</b> Star，120+ 团队用于 POC 与生产交付，周下载 1.2k。" },
@@ -187,7 +184,7 @@ export function createSampleResumeContent() {
       columns: [
         text("制造业设备预测性维护平台"),
         text("交付负责人（驻场 6 个月）"),
-        text("2024.07—2025.01"),
+        text("2024.07 - 2025.01"),
       ],
       bullets: [
         { id: "project-bullet-3", html: "驻场梳理 6 条产线、800+ 传感器数据，构建时序特征管道与异常检测模型，非计划停机下降 <b>31%</b>，OEE 提升 6%。" },
@@ -200,7 +197,7 @@ export function createSampleResumeContent() {
       columns: [
         text("国有大行智能合规审查 Agent"),
         text("技术负责人"),
-        text("2023.09—2024.05"),
+        text("2023.09 - 2024.05"),
       ],
       bullets: [
         { id: "project-bullet-6", html: "基于 LangGraph 构建多步审查 Agent，串联 8 类监管规则与 12 份制度文件，单份材料审核由 50 分钟降至 <b>2.5 分钟</b>。" },
@@ -214,7 +211,7 @@ export function createSampleResumeContent() {
   content.sections[3].columns = [
     text("清华大学"),
     text("计算机科学与技术"),
-    text("2014—2018"),
+    text("2014.09 - 2018.06"),
   ];
   content.sections[3].bullets = [
     { id: "education-bullet-1", html: "ACM-ICPC 全球总决赛（World Finals）参赛选手，亚洲区域赛金牌（队内主代码手，赛区第 2 名），校队队长 2 年。" },

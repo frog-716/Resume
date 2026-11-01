@@ -10,7 +10,7 @@ Resume 是优先交付、用于真实简历制作的 Chrome 侧边栏扩展。�
 
 2026-10-31：首版已完成真机验收。`docs/handoff/rewrite-mission-brief.md`（clean-room 重写）已作废；`extension/` 单体侧边栏为既定首版路径，不再考虑分层重构。领域纯逻辑（方向生命周期、排序重排、删除守卫）已抽到 `extension/domain-editor.mjs` 并补单测。
 
-2026-11-01：方向室新增常驻「原型」（SPEC S-09）。`sidepanel.mjs` 用内存样稿渲染一张固定排在最前的原型卡片和只读预览视图（`prototype` 视图，与 `editor`/`directions` 并列），预览与缩略都读 `domain-resume-content.mjs` 导出的 `SAMPLE_LAYOUT`（9.98pt、松紧度 0，恰好一页）；原型不写入 `localStorage`/`chrome.storage`，改名与删除对它无效。新建方向时的模板下拉与复制逻辑未改，仍默认「原型」。
+2026-11-01：方向室新增「原型」（SPEC S-09）。初版把它做成只读预览视图，同日按用户反馈改为一等方向：`domain-editor.mjs` 用固定 id `direction-prototype` 定义它（`makePrototypeDirection`/`isPrototypeDirection`/`ensurePrototypeDirection`），`loadStore` 给老存档补种，`canDeleteDirection` 对它恒 false，其余全部走普通方向的编辑器与打印链路；方向室里只有它固定排第一且没有删除按钮。旧 `prototype` 只读视图与 `renderPrototypeCard`/`renderPrototypePreview`/`updatePrototypeScale` 已删除，`SAMPLE_LAYOUT`（9.98pt、松紧度 0.085）现在只作为补种时的初始排版。同轮修掉方向卡片缩略与编辑页排版不一致：卡片此前只写 `--body-size`，行高与六处间距仍用 10.5pt 默认值，现按各方向存档的 layout 整份调用 `applySpacing`（`cardLayoutOf`）。
 
 ## 阅读入口
 
