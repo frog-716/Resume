@@ -1050,18 +1050,13 @@ function setView(view) {
 function renderDirections() {
   const query = elements.directionSearch.value.trim().toLowerCase();
   // S-07：方向室按最近编辑时间倒序。搜索只过滤、不改变相对顺序。
-  const ordered = orderedDirections();
-  const directions = ordered.filter((direction) => !query || direction.name.toLowerCase().includes(query));
+  // S-09：原型也是这个顺序里的一员，它不享有固定位置——唯一的不同只是不能删除。
+  const directions = orderedDirections().filter((direction) => !query || direction.name.toLowerCase().includes(query));
   elements.directionGrid.replaceChildren(...directions.map(renderDirectionCard));
   updateCardScales();
 }
-// S-07 的排序，加一条 S-09 的位置规则：原型固定排在第一位。位置之外它与
-// 其它方向没有差别（同样是可编辑、可导出的一份简历）。
 function orderedDirections() {
-  const sorted = [...storeState.directions].sort((a, b) => directionSortKey(b) - directionSortKey(a));
-  const index = sorted.findIndex(isPrototypeDirection);
-  if (index <= 0) return sorted;
-  return [sorted[index], ...sorted.slice(0, index), ...sorted.slice(index + 1)];
+  return [...storeState.directions].sort((a, b) => directionSortKey(b) - directionSortKey(a));
 }
 // 卡片缩略必须整份套用该方向自己的排版参数（字号 + 松紧度）：只写
 // --body-size 会让行高与六处间距继续沿用 10.5pt 的默认值，同一份内容在
@@ -1149,14 +1144,16 @@ function confirmAction(message, title = '请确认', actionText = '确认') {
 function openCreateDirection() {
   elements.directionName.value = '';
   // 模板下拉就是"现有方向"本身——原型也是一份普通方向，不必再单开一个
-  // 特殊条目。默认选中「原型」（它在清单首位），点开就能用，不必先展开下拉。
+  // 特殊条目。清单顺序跟着方向室的最近编辑倒序走，但默认仍然选中「原型」：
+  // 它是内置的起步模板，不该因为最近编辑的是别的方向就悄悄换掉默认值。
   const options = orderedDirections();
   elements.directionTemplate.replaceChildren(...options.map((direction) => {
     const option = document.createElement('option');
     option.value = direction.id; option.textContent = direction.name;
     return option;
   }));
-  elements.directionTemplate.value = options[0]?.id || '';
+  const preferred = options.find(isPrototypeDirection) || options[0];
+  elements.directionTemplate.value = preferred?.id || '';
   openDialog(elements.directionDialog); elements.directionName.focus();
 }
 async function createDirection() {
